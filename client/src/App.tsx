@@ -31,14 +31,25 @@ export default function App() {
       </button>
 
       {state === "success" && (
-        <p className="mt-3 text-success fw-bold">✅ Online</p>
+        <div className="mt-3">
+          <p className="text-success fw-bold">✅ Online</p>
+          <div className="mt-4">
+            <h2 className="h5">Supported Request Categories:</h2>
+            <ul className="list-unstyled">
+              {categories.map((category) => (
+                <li key={category.id}>• {category.name}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
       )}
 
       {state === "error" && (
-        <p className="mt-3 text-danger fw-bold">❌ Offline — Backend is unavailable</p>
+        <div className="mt-3 text-danger fw-bold">
+          <p>❌ Offline</p>
+          <p>Unable to connect to TokTickIT API</p>
+        </div>
       )}
-
-      {/* TODO(Issue 4): render category list here */}
     </div>
   );
 }
