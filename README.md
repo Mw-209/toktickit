@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # TokTickIT (ตอกติ๊กกิต) — IT Service Desk
 
 TokTickIT is a full-stack IT service desk application for managing Account & Access, Hardware, Software, and Network requests.
@@ -113,3 +114,6 @@ VITE_API_URL="http://localhost:3000"
   cd client
   npm test
   ```
+=======
+# toktickit
+>>>>>>> main
