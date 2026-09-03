@@ -80,7 +80,9 @@ export async function checkSystem(): Promise<SystemStatus> {
 export async function fetchActiveRequesters(): Promise<RequesterUser[]> {
   const res = await fetch(`${API_URL}/api/requesters`);
   if (!res.ok) throw new Error("Failed to fetch requesters");
-  return res.json();
+  const data = await res.json();
+  // Handle both plain array and { value: [...] } shapes
+  return Array.isArray(data) ? data : (data.value ?? []);
 }
 
 export async function fetchCategories(): Promise<Category[]> {

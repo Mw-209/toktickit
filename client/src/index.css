@@ -418,6 +418,97 @@ body {
   gap: 0.75rem;
 }
 
+/* Priority Toggle Buttons (Issue 3) */
+.zen-priority-btn {
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: #F8FAFC;
+  color: var(--color-text-muted);
+  transition: all 0.15s ease;
+}
+
+.zen-priority-btn.active.zen-priority-low    { background-color: #F8FAFC; border-color: #94A3B8; color: #475569; }
+.zen-priority-btn.active.zen-priority-medium { background-color: #FEF3C7; border-color: #F59E0B; color: #92400E; }
+.zen-priority-btn.active.zen-priority-high   { background-color: #FFEDD5; border-color: #EA580C; color: #9A3412; }
+.zen-priority-btn.active.zen-priority-urgent { background-color: #FEE2E2; border-color: #DC2626; color: #991B1B; }
+
+/* File Attachment Items (Issue 3) */
+.zen-file-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  background-color: #F8FAFC;
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.zen-file-item.zen-file-error {
+  background-color: var(--color-error-bg);
+  border-color: #FECACA;
+}
+
+.zen-remove-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.1s ease;
+  flex-shrink: 0;
+}
+
+.zen-remove-btn:hover {
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.zen-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #FFFFFF;
+  border: 1.5px dashed var(--color-field-border);
+  color: var(--color-text-muted);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.zen-upload-btn:hover {
+  border-color: var(--color-secondary-green);
+  color: var(--color-secondary-green);
+  background-color: var(--color-pale-green);
+}
+
+.zen-btn-secondary {
+  background-color: #FFFFFF;
+  color: var(--color-text-main);
+  border: 1px solid var(--color-field-border);
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zen-btn-secondary:hover {
+  background-color: #F8FAFC;
+  border-color: #94A3B8;
+}
+
+
 /* Responsive Media Queries (Section 8.7) */
 @media (max-width: 767px) {
   .zen-table-desktop {
