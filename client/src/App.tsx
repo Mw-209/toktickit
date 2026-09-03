@@ -23,6 +23,13 @@ export default function App() {
     fetchRelatedSystems().then(setRelatedSystems).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!selectedRequester) {
+      setCurrentPage("my-tickets");
+      setSelectedTicketId(null);
+    }
+  }, [selectedRequester]);
+
   // AC-02: Guard — redirect to selector if no requester is selected
   if (!selectedRequester) {
     return <RequesterSelector />;
