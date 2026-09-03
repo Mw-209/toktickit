@@ -85,7 +85,7 @@ export default function CreateTicketForm({ categories, relatedSystems, onSuccess
       formData.append("categoryId", categoryId);
       formData.append("relatedSystemId", relatedSystemId);
       formData.append("requestedPriority", priority);
-      pendingFiles.forEach(({ file }) => formData.append("attachments", file));
+      pendingFiles.forEach(({ file }) => formData.append("files", file));
 
       const ticket = await createTicket(formData);
       onSuccess(ticket.ticketNumber);
