@@ -4,6 +4,7 @@ import RequesterSelector from "./components/RequesterSelector.js";
 import Navbar from "./components/Navbar.js";
 import CreateTicketForm from "./components/CreateTicketForm.js";
 import MyTicketsDashboard from "./components/MyTicketsDashboard.js";
+import TicketDetailView from "./components/TicketDetailView.js";
 import { Category, RelatedSystem, fetchCategories, fetchRelatedSystems } from "./api.js";
 
 type Page = "my-tickets" | "create-ticket" | "ticket-detail";
@@ -72,16 +73,10 @@ export default function App() {
         )}
 
         {currentPage === "ticket-detail" && selectedTicketId && (
-          <div className="zen-card">
-            <button className="zen-btn-secondary" style={{ marginBottom: "1rem" }} onClick={() => setCurrentPage("my-tickets")}>
-              ← Back to My Tickets
-            </button>
-            <div style={{ textAlign: "center", padding: "2rem", color: "var(--color-text-muted)" }}>
-              <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>🎫</div>
-              <p style={{ fontWeight: 500 }}>Ticket Detail for ID #{selectedTicketId}</p>
-              <p style={{ fontSize: "0.875rem" }}>Full detail view coming in Issue 5</p>
-            </div>
-          </div>
+          <TicketDetailView 
+            ticketId={selectedTicketId} 
+            onBack={() => setCurrentPage("my-tickets")} 
+          />
         )}
 
       </div>
