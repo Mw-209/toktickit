@@ -224,6 +224,7 @@ export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refre
                     <th>Priority</th>
                     <th>Status</th>
                     <th>Created</th>
+                    <th>Last Updated</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -244,6 +245,9 @@ export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refre
                       <td><StatusBadge status={ticket.currentStatus} /></td>
                       <td style={{ whiteSpace: "nowrap", color: "var(--color-text-muted)", fontSize: "0.8rem" }}>
                         {new Date(ticket.createdAt).toLocaleDateString("th-TH")}
+                      </td>
+                      <td style={{ whiteSpace: "nowrap", color: "var(--color-text-muted)", fontSize: "0.8rem" }}>
+                        {new Date(ticket.updatedAt).toLocaleDateString("th-TH")}
                       </td>
                     </tr>
                   ))}
@@ -275,31 +279,36 @@ export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refre
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", marginTop: "1rem" }}>
-              <button
-                id="btn-prev-page"
-                className="zen-btn-secondary"
-                style={{ padding: "0.35rem 0.75rem" }}
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-              >
-                ← Prev
-              </button>
-              <span style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
-                Page {currentPage} / {totalPages}
-              </span>
-              <button
-                id="btn-next-page"
-                className="zen-btn-secondary"
-                style={{ padding: "0.35rem 0.75rem" }}
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
-                Next →
-              </button>
-            </div>
-          )}
+          <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+            <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", margin: 0 }}>
+              Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalItems)}–{Math.min(currentPage * PAGE_SIZE, totalItems)} of {totalItems} ticket{totalItems !== 1 ? "s" : ""}
+            </p>
+            {totalPages > 1 && (
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}>
+                <button
+                  id="btn-prev-page"
+                  className="zen-btn-secondary"
+                  style={{ padding: "0.35rem 0.75rem" }}
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  ← Prev
+                </button>
+                <span style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+                  Page {currentPage} / {totalPages}
+                </span>
+                <button
+                  id="btn-next-page"
+                  className="zen-btn-secondary"
+                  style={{ padding: "0.35rem 0.75rem" }}
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

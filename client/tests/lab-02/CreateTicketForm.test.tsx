@@ -64,13 +64,13 @@ describe("CreateTicketForm (Issue 3 - FR-05, FR-06, BR-01)", () => {
     });
   });
 
-  it("FR-06: shows error when summary is less than 10 characters", async () => {
+  it("FR-06: shows error when summary is less than 5 characters (BR-05)", async () => {
     renderForm();
-    fireEvent.change(screen.getByLabelText(/Summary/i), { target: { value: "Short" } });
+    fireEvent.change(screen.getByLabelText(/Summary/i), { target: { value: "Hi!!" } }); // 4 chars, below min of 5
     fireEvent.click(screen.getByRole("button", { name: /Create Ticket/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/at least 10 characters/i)).toBeInTheDocument();
+      expect(screen.getByText(/at least 5 characters/i)).toBeInTheDocument();
     });
   });
 

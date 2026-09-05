@@ -58,9 +58,11 @@ export default function CreateTicketForm({ categories, relatedSystems, onSuccess
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     if (!summary.trim()) errors.summary = "Summary is required.";
-    else if (summary.trim().length < 10) errors.summary = "Summary must be at least 10 characters.";
+    else if (summary.trim().length < 5) errors.summary = "Summary must be at least 5 characters.";
+    else if (summary.trim().length > 100) errors.summary = "Summary must not exceed 100 characters.";
     if (!description.trim()) errors.description = "Description is required.";
-    else if (description.trim().length < 20) errors.description = "Description must be at least 20 characters.";
+    else if (description.trim().length < 10) errors.description = "Description must be at least 10 characters.";
+    else if (description.trim().length > 2000) errors.description = "Description must not exceed 2,000 characters.";
     if (!categoryId) errors.categoryId = "Category is required.";
     if (!relatedSystemId) errors.relatedSystemId = "Related System is required.";
     setFieldErrors(errors);
@@ -103,9 +105,32 @@ export default function CreateTicketForm({ categories, relatedSystems, onSuccess
     <form onSubmit={handleSubmit} noValidate>
       <div className="zen-card" style={{ maxWidth: 720, margin: "0 auto" }}>
         <h2 style={{ marginTop: 0, fontSize: "1.25rem", fontWeight: 700 }}>✏️ Create New Ticket</h2>
-        <p style={{ color: "var(--color-text-muted)", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
-          Submitting as: <strong>{selectedRequester?.name}</strong>
-        </p>
+
+        {/* Read-only Meta Strip (UI Spec 7.2) */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "0.75rem",
+          background: "var(--color-field-readonly-bg)",
+          border: "1px solid var(--color-surface-border)",
+          borderRadius: "6px",
+          padding: "0.75rem 1rem",
+          marginBottom: "1.5rem",
+          fontSize: "0.8rem",
+        }}>
+          <div>
+            <div style={{ color: "var(--color-text-muted)", marginBottom: "0.15rem" }}>Ticket No.</div>
+            <div style={{ fontWeight: 600, color: "var(--color-text-muted)", fontStyle: "italic" }}>Assigned automatically on save</div>
+          </div>
+          <div>
+            <div style={{ color: "var(--color-text-muted)", marginBottom: "0.15rem" }}>Ticket Date</div>
+            <div style={{ fontWeight: 600 }}>{new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</div>
+          </div>
+          <div>
+            <div style={{ color: "var(--color-text-muted)", marginBottom: "0.15rem" }}>Requester</div>
+            <div style={{ fontWeight: 600 }}>{selectedRequester?.name}</div>
+          </div>
+        </div>
 
         {submitError && (
           <div className="zen-alert-warning" style={{ marginBottom: "1rem" }}>
@@ -122,14 +147,14 @@ export default function CreateTicketForm({ categories, relatedSystems, onSuccess
             id="ticket-summary"
             className={`zen-input ${fieldErrors.summary ? "zen-input-error" : ""}`}
             type="text"
-            placeholder="Briefly describe your issue (min 10 characters)"
+            placeholder="Briefly describe your issue (5–100 characters)"
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
-            maxLength={200}
+            maxLength={100}
           />
           {fieldErrors.summary && <p className="zen-field-error">{fieldErrors.summary}</p>}
-          <p style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginTop: "0.25rem" }}>
-            {summary.length}/200 characters
+          <p style={{ fontSize: "0.75rem", color: summary.trim().length > 100 ? "var(--color-error)" : "var(--color-text-muted)", marginTop: "0.25rem" }}>
+            {summary.length}/100 characters
           </p>
         </div>
 
@@ -142,11 +167,15 @@ export default function CreateTicketForm({ categories, relatedSystems, onSuccess
             id="ticket-description"
             className={`zen-textarea ${fieldErrors.description ? "zen-input-error" : ""}`}
             rows={5}
-            placeholder="Provide detailed information about the issue (min 20 characters)"
+            placeholder="Provide detailed information about the issue (10–2,000 characters)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            maxLength={2000}
           />
           {fieldErrors.description && <p className="zen-field-error">{fieldErrors.description}</p>}
+          <p style={{ fontSize: "0.75rem", color: description.length > 2000 ? "var(--color-error)" : "var(--color-text-muted)", marginTop: "0.25rem" }}>
+            {description.length}/2,000 characters
+          </p>
         </div>
 
         {/* Category & Related System (2 columns) */}
