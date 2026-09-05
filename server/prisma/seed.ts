@@ -64,48 +64,159 @@ async function main() {
   }
   console.log("✓ Seeded 5 Development Requesters (4 active, 1 inactive).");
 
-  // 4. Seed initial sample tickets for testing ownership and listing
+  // 4. Seed sample tickets with varied statuses for realistic demo & filter testing
   const jennifer = await prisma.requesterUser.findUnique({ where: { email: "jennifer.anderson@example.edu" } });
-  const david = await prisma.requesterUser.findUnique({ where: { email: "david.lee@example.edu" } });
+  const david    = await prisma.requesterUser.findUnique({ where: { email: "david.lee@example.edu" } });
+  const sarah    = await prisma.requesterUser.findUnique({ where: { email: "sarah.johnson@example.edu" } });
+
   const hardwareCat = await prisma.category.findUnique({ where: { name: "Hardware" } });
-  const networkCat = await prisma.category.findUnique({ where: { name: "Network" } });
+  const softwareCat = await prisma.category.findUnique({ where: { name: "Software" } });
+  const networkCat  = await prisma.category.findUnique({ where: { name: "Network" } });
+  const accountCat  = await prisma.category.findUnique({ where: { name: "Account and Access" } });
+
   const laptopSys = await prisma.relatedSystem.findUnique({ where: { name: "Corporate Laptop" } });
-  const vpnSys = await prisma.relatedSystem.findUnique({ where: { name: "VPN" } });
+  const vpnSys    = await prisma.relatedSystem.findUnique({ where: { name: "VPN" } });
+  const emailSys  = await prisma.relatedSystem.findUnique({ where: { name: "Email" } });
+  const leb2Sys   = await prisma.relatedSystem.findUnique({ where: { name: "LEB2 App" } });
+  const gradeSys  = await prisma.relatedSystem.findUnique({ where: { name: "Grade Submission App" } });
+  const wifiSys   = await prisma.relatedSystem.findUnique({ where: { name: "Campus Wi-Fi" } });
 
-  if (jennifer && hardwareCat && laptopSys) {
-    await prisma.ticket.upsert({
-      where: { ticketNumber: "TKT-2026-000001" },
-      update: {},
-      create: {
-        ticketNumber: "TKT-2026-000001",
-        summary: "Laptop battery drains quickly",
-        description: "My laptop battery is draining much faster than usual even when the system is idle. Started after last week's update.",
-        requestedPriority: "MEDIUM",
-        currentStatus: "NEW",
-        requesterId: jennifer.id,
-        categoryId: hardwareCat.id,
-        relatedSystemId: laptopSys.id,
-      },
-    });
-  }
+  const sampleTickets = [
+    // Jennifer — 7 tickets matching the labsheet example
+    {
+      ticketNumber: "TKT-2026-000001",
+      summary: "Laptop battery drains quickly",
+      description: "My laptop battery is draining much faster than usual even when the system is idle. Started after last week's update.",
+      requestedPriority: "MEDIUM" as const,
+      currentStatus: "NEW" as const,
+      requesterId: jennifer!.id,
+      categoryId: hardwareCat!.id,
+      relatedSystemId: laptopSys!.id,
+    },
+    {
+      ticketNumber: "TKT-2026-000002",
+      summary: "Cannot access grading portal",
+      description: "When I try to log in to the grading portal I get a 403 Forbidden error. My account was working last week.",
+      requestedPriority: "HIGH" as const,
+      currentStatus: "NEW" as const,
+      requesterId: jennifer!.id,
+      categoryId: accountCat!.id,
+      relatedSystemId: gradeSys!.id,
+    },
+    {
+      ticketNumber: "TKT-2026-000003",
+      summary: "Cannot connect to campus VPN",
+      description: "Encountering error 809 when attempting to connect to the campus VPN from home network.",
+      requestedPriority: "HIGH" as const,
+      currentStatus: "IN_PROGRESS" as const,
+      requesterId: jennifer!.id,
+      categoryId: networkCat!.id,
+      relatedSystemId: vpnSys!.id,
+    },
+    {
+      ticketNumber: "TKT-2026-000004",
+      summary: "Email signature missing after update",
+      description: "After the Outlook update last Monday, my email signature no longer appears when composing new messages.",
+      requestedPriority: "LOW" as const,
+      currentStatus: "PENDING" as const,
+      requesterId: jennifer!.id,
+      categoryId: accountCat!.id,
+      relatedSystemId: emailSys!.id,
+    },
+    {
+      ticketNumber: "TKT-2026-000005",
+      summary: "Laptop keyboard keys sticking",
+      description: "Several keys on my keyboard are sticking and require extra force to press. This is significantly slowing down my work.",
+      requestedPriority: "MEDIUM" as const,
+      currentStatus: "RESOLVED" as const,
+      requesterId: jennifer!.id,
+      categoryId: hardwareCat!.id,
+      relatedSystemId: laptopSys!.id,
+    },
+    {
+      ticketNumber: "TKT-2026-000006",
+      summary: "LEB2 app crashes on startup",
+      description: "The LEB2 application crashes immediately after the splash screen. I reinstalled it but the problem persists.",
+      requestedPriority: "HIGH" as const,
+      currentStatus: "IN_PROGRESS" as const,
+      requesterId: jennifer!.id,
+      categoryId: softwareCat!.id,
+      relatedSystemId: leb2Sys!.id,
+    },
+    {
+      ticketNumber: "TKT-2026-000007",
+      summary: "Wi-Fi drops every 30 minutes",
+      description: "My connection to campus Wi-Fi drops approximately every 30 minutes and requires manual reconnection each time.",
+      requestedPriority: "MEDIUM" as const,
+      currentStatus: "CLOSED" as const,
+      requesterId: jennifer!.id,
+      categoryId: networkCat!.id,
+      relatedSystemId: wifiSys!.id,
+    },
+    // David — 3 tickets with mixed statuses
+    {
+      ticketNumber: "TKT-2026-000008",
+      summary: "Cannot connect to campus VPN",
+      description: "Encountering error 809 when attempting to connect to the campus VPN from home network.",
+      requestedPriority: "HIGH" as const,
+      currentStatus: "IN_PROGRESS" as const,
+      requesterId: david!.id,
+      categoryId: networkCat!.id,
+      relatedSystemId: vpnSys!.id,
+    },
+    {
+      ticketNumber: "TKT-2026-000009",
+      summary: "Email signature missing after update",
+      description: "After the Outlook update last Monday, my email signature no longer appears when composing new messages.",
+      requestedPriority: "LOW" as const,
+      currentStatus: "NEW" as const,
+      requesterId: david!.id,
+      categoryId: accountCat!.id,
+      relatedSystemId: emailSys!.id,
+    },
+    {
+      ticketNumber: "TKT-2026-000010",
+      summary: "Laptop keyboard keys sticking",
+      description: "Several keys on my keyboard are sticking and require extra force to press. This is significantly slowing down my work.",
+      requestedPriority: "MEDIUM" as const,
+      currentStatus: "RESOLVED" as const,
+      requesterId: david!.id,
+      categoryId: hardwareCat!.id,
+      relatedSystemId: laptopSys!.id,
+    },
+    // Sarah — 2 tickets with mixed statuses
+    {
+      ticketNumber: "TKT-2026-000011",
+      summary: "Grade submission fails on save",
+      description: "When submitting final grades the system shows a spinner for 2 minutes then throws a 504 gateway timeout error.",
+      requestedPriority: "URGENT" as const,
+      currentStatus: "IN_PROGRESS" as const,
+      requesterId: sarah!.id,
+      categoryId: softwareCat!.id,
+      relatedSystemId: gradeSys!.id,
+    },
+    {
+      ticketNumber: "TKT-2026-000012",
+      summary: "No Wi-Fi access in Building C",
+      description: "There is no Wi-Fi signal in Building C Room 301. Other rooms on the same floor have normal connectivity.",
+      requestedPriority: "HIGH" as const,
+      currentStatus: "NEW" as const,
+      requesterId: sarah!.id,
+      categoryId: networkCat!.id,
+      relatedSystemId: wifiSys!.id,
+    },
+  ];
 
-  if (david && networkCat && vpnSys) {
+  let seeded = 0;
+  for (const ticket of sampleTickets) {
     await prisma.ticket.upsert({
-      where: { ticketNumber: "TKT-2026-000002" },
-      update: {},
-      create: {
-        ticketNumber: "TKT-2026-000002",
-        summary: "Cannot connect to campus VPN",
-        description: "Encountering error 809 when attempting to connect to the campus VPN from home network.",
-        requestedPriority: "HIGH",
-        currentStatus: "NEW",
-        requesterId: david.id,
-        categoryId: networkCat.id,
-        relatedSystemId: vpnSys.id,
-      },
+      where: { ticketNumber: ticket.ticketNumber },
+      update: ticket,
+      create: ticket,
     });
+    seeded++;
   }
-  console.log("✓ Seeded sample tickets for ownership isolation tests.");
+  console.log(`✓ Seeded ${seeded} sample tickets with varied statuses (NEW, IN_PROGRESS, RESOLVED, CLOSED).`);
 }
 
 main()
