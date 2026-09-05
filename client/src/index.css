@@ -272,12 +272,6 @@ body {
   border: 1px solid #BFDBFE;
 }
 
-.zen-badge-pending {
-  background-color: #FEF3C7;
-  color: #B45309;
-  border: 1px solid #FDE68A;
-}
-
 .zen-badge-resolved {
   background-color: #F0FDFA;
   color: #0F766E;

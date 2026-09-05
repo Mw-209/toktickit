@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRequester } from "../context/RequesterContext.js";
 import { Ticket, Category, TicketListResponse, fetchTickets, fetchCategories } from "../api.js";
 
-const STATUS_OPTIONS = ["ALL", "NEW", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"] as const;
+const STATUS_OPTIONS = ["ALL", "NEW", "IN_PROGRESS", "RESOLVED", "CLOSED"] as const;
 const PRIORITY_OPTIONS = ["ALL", "LOW", "MEDIUM", "HIGH", "URGENT"] as const;
 const PAGE_SIZE = 10;
 
@@ -16,14 +16,12 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     NEW: "zen-badge zen-badge-new",
     IN_PROGRESS: "zen-badge zen-badge-inprogress",
-    PENDING: "zen-badge zen-badge-pending",
     RESOLVED: "zen-badge zen-badge-resolved",
     CLOSED: "zen-badge zen-badge-closed",
   };
   const label: Record<string, string> = {
     NEW: "New",
     IN_PROGRESS: "In Progress",
-    PENDING: "Pending",
     RESOLVED: "Resolved",
     CLOSED: "Closed",
   };

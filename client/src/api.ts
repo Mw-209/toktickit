@@ -38,7 +38,7 @@ export interface Ticket {
   description: string;
   requestedPriority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
   itPriority: string | null;
-  currentStatus: "NEW" | "IN_PROGRESS" | "PENDING" | "RESOLVED" | "CLOSED";
+  currentStatus: "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
   requesterId: number;
   categoryId: number;
   relatedSystemId: number;
