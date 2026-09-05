@@ -109,6 +109,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
   const getStatusBadgeClass = (s: string) => {
     switch (s) {
       case "NEW": return "zen-badge-new";
+      case "PENDING": return "zen-badge-pending";
       case "IN_PROGRESS": return "zen-badge-inprogress";
       case "RESOLVED": return "zen-badge-resolved";
       default: return "zen-badge-closed";
