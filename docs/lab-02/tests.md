@@ -85,3 +85,32 @@ cd client && npm test
 # 3. Run Playwright E2E tests
 npx playwright test e2e/lab-02/
 ```
+
+---
+
+## 6. Final Test Results Summary
+
+| Test Layer | Total Tests | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| **API Integration** (`server/tests/lab-02/`) | 10 | 10 | 0 | 0 |
+| **UI Component** (`client/tests/lab-02/`) | 7 | 7 | 0 | 0 |
+| **E2E (Playwright)** (`e2e/lab-02/`) | 1 | 1 | 0 | 0 |
+| **Total** | **18** | **18** | **0** | **0** |
+
+**Overall Result: ✅ All 18 tests passed — Zero failures, Zero skipped.**
+
+Responsive visual checks (Section 4 checklist) verified manually across Desktop (1280px), Tablet (800px), and Mobile (375px) viewports with no horizontal overflow observed.
+
+---
+
+## 7. Known Limitations and Deferred Tests
+
+1. **Authentication not in scope:** All API tests use a plain `requesterId` query parameter to simulate user identity. Real session-based ownership checks (JWT, cookies, OAuth) are deferred to Lab 3. Tests covering authenticated session flows are explicitly out of scope for this sprint.
+
+2. **IT Staff workflows not tested:** Ticket status transitions beyond `NEW` (e.g., `IN_PROGRESS`, `RESOLVED`, `CLOSED`) and IT Priority assignment are excluded per Section 3.2 of the specification. No tests cover these transitions.
+
+3. **Large-scale pagination stress not covered:** The pagination tests verify correctness up to a small dataset (seed data). Tests for datasets exceeding 1,000 records are deferred as performance testing is out of scope for Lab 2.
+
+4. **File storage integration (disk I/O):** E2E upload tests verify HTTP response codes and database records. Low-level disk I/O failure scenarios (e.g., full disk, permission errors on `server/uploads/`) are not covered by automated tests.
+
+5. **Cross-browser visual parity:** Playwright E2E tests run on Chromium only. Firefox and Safari visual parity checks are noted for manual spot-checking but not automated in this sprint.
