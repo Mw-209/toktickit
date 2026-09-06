@@ -82,7 +82,7 @@ async function main() {
   const wifiSys   = await prisma.relatedSystem.findUnique({ where: { name: "Campus Wi-Fi" } });
 
   const sampleTickets = [
-    // Jennifer — 7 tickets matching the labsheet example
+    // Jennifer — 7 tickets (All NEW according to Lab 2 strict rules)
     {
       ticketNumber: "TKT-2026-000001",
       summary: "Laptop battery drains quickly",
@@ -108,7 +108,7 @@ async function main() {
       summary: "Cannot connect to campus VPN",
       description: "Encountering error 809 when attempting to connect to the campus VPN from home network.",
       requestedPriority: "HIGH" as const,
-      currentStatus: "IN_PROGRESS" as const,
+      currentStatus: "NEW" as const,
       requesterId: jennifer!.id,
       categoryId: networkCat!.id,
       relatedSystemId: vpnSys!.id,
@@ -118,7 +118,7 @@ async function main() {
       summary: "Email signature missing after update",
       description: "After the Outlook update last Monday, my email signature no longer appears when composing new messages.",
       requestedPriority: "LOW" as const,
-      currentStatus: "PENDING" as const,
+      currentStatus: "NEW" as const,
       requesterId: jennifer!.id,
       categoryId: accountCat!.id,
       relatedSystemId: emailSys!.id,
@@ -128,7 +128,7 @@ async function main() {
       summary: "Laptop keyboard keys sticking",
       description: "Several keys on my keyboard are sticking and require extra force to press. This is significantly slowing down my work.",
       requestedPriority: "MEDIUM" as const,
-      currentStatus: "RESOLVED" as const,
+      currentStatus: "NEW" as const,
       requesterId: jennifer!.id,
       categoryId: hardwareCat!.id,
       relatedSystemId: laptopSys!.id,
@@ -138,7 +138,7 @@ async function main() {
       summary: "LEB2 app crashes on startup",
       description: "The LEB2 application crashes immediately after the splash screen. I reinstalled it but the problem persists.",
       requestedPriority: "HIGH" as const,
-      currentStatus: "IN_PROGRESS" as const,
+      currentStatus: "NEW" as const,
       requesterId: jennifer!.id,
       categoryId: softwareCat!.id,
       relatedSystemId: leb2Sys!.id,
@@ -148,18 +148,18 @@ async function main() {
       summary: "Wi-Fi drops every 30 minutes",
       description: "My connection to campus Wi-Fi drops approximately every 30 minutes and requires manual reconnection each time.",
       requestedPriority: "MEDIUM" as const,
-      currentStatus: "CLOSED" as const,
+      currentStatus: "NEW" as const,
       requesterId: jennifer!.id,
       categoryId: networkCat!.id,
       relatedSystemId: wifiSys!.id,
     },
-    // David — 3 tickets with mixed statuses
+    // David — 3 tickets (All NEW)
     {
       ticketNumber: "TKT-2026-000008",
       summary: "Cannot connect to campus VPN",
       description: "Encountering error 809 when attempting to connect to the campus VPN from home network.",
       requestedPriority: "HIGH" as const,
-      currentStatus: "IN_PROGRESS" as const,
+      currentStatus: "NEW" as const,
       requesterId: david!.id,
       categoryId: networkCat!.id,
       relatedSystemId: vpnSys!.id,
@@ -179,18 +179,18 @@ async function main() {
       summary: "Laptop keyboard keys sticking",
       description: "Several keys on my keyboard are sticking and require extra force to press. This is significantly slowing down my work.",
       requestedPriority: "MEDIUM" as const,
-      currentStatus: "RESOLVED" as const,
+      currentStatus: "NEW" as const,
       requesterId: david!.id,
       categoryId: hardwareCat!.id,
       relatedSystemId: laptopSys!.id,
     },
-    // Sarah — 2 tickets with mixed statuses
+    // Sarah — 2 tickets (All NEW)
     {
       ticketNumber: "TKT-2026-000011",
       summary: "Grade submission fails on save",
       description: "When submitting final grades the system shows a spinner for 2 minutes then throws a 504 gateway timeout error.",
       requestedPriority: "URGENT" as const,
-      currentStatus: "IN_PROGRESS" as const,
+      currentStatus: "NEW" as const,
       requesterId: sarah!.id,
       categoryId: softwareCat!.id,
       relatedSystemId: gradeSys!.id,
