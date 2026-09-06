@@ -19,7 +19,8 @@ main (at Lab 1 completion)
         ├── feature/4-my-tickets               ──(PR #19)──> lab2-staging
         ├── feature/5-ticket-detail            ──(PR #21)──> lab2-staging
         ├── feature/6-ui-compliance-fix        ──(PR #23)──> lab2-staging
-        ├── feature/7-seed-varied-status       ──(PR #24)──> lab2-staging
+        ├── feature/7-seed-varied-status       ──(PR #25)──> lab2-staging
+        ├── feature/8-revert-issue-7           ──(PR #27)──> lab2-staging
         └── [Release PR to main]
 ```
 
@@ -144,17 +145,26 @@ main (at Lab 1 completion)
 
 ### Issue 7: Add varied-status seed data & PENDING UI
 * **Branch:** `feature/7-seed-varied-status`
-* **PR:** [Link to PR 7]
 * **Requirement IDs:** Lab Sheet Example Match
 * **Scope:**
-  * Update `seed.ts` to include 7 tickets for Jennifer Anderson with varied statuses (`NEW`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, `PENDING`) to match the lab sheet UI examples.
-  * Update Ticket numbers for David and Sarah to avoid collision.
-  * Add `PENDING` to `currentStatus` Enum in frontend `api.ts`.
-  * Add `zen-badge-pending` CSS class and integrate into `TicketDetailView.tsx` and `MyTicketsDashboard.tsx`.
-* **Exclusions:** Backend Prisma schema changes (PENDING handled as raw string since Prisma allows it with SQLite/String, though we use String default NEW).
+  * Update `seed.ts` to include 7 sample tickets for Jennifer Anderson with varied statuses to match the lab sheet UI examples.
+* **Exclusions:** Backend Prisma schema changes.
 * **Acceptance Criteria:**
   * Jennifer has exactly 7 tickets in My Tickets dashboard.
-  * `PENDING` status renders as a yellow badge.
-  * Status filter includes `PENDING`.
 * **Dependencies:** Issue 6.
-* **Merge Order:** 7th (Final).
+* **Merge Order:** 7th.
+
+---
+
+### Issue 8: Revert & Refine Seed Data to Strict Lab Rules
+* **Branch:** `feature/8-revert-issue-7`
+* **Requirement IDs:** Lab 2 lifecycle exclusion rule
+* **Scope:**
+  * Revert custom UI states (e.g. PENDING) to comply strictly with Lab 2 rules.
+  * Re-seed 7 sample tickets for Jennifer Anderson but ensure ALL are in `NEW` status.
+  * Update Ticket numbers for David and Sarah to avoid collision.
+* **Exclusions:** Ticket lifecycle progression.
+* **Acceptance Criteria:**
+  * All new sample tickets have `NEW` status.
+* **Dependencies:** Issue 7.
+* **Merge Order:** 8th (Final).
