@@ -1,9 +1,7 @@
 # Lab 2 — AI Agent Use Log
 
-**Author:** [Your Name] — [Student ID] — GitHub: @[YourGitHub]
-
 ## 1. LLM Used
-- Google Gemini 1.5 Pro (Antigravity IDE Agent)
+- Google Gemini 3.1 Pro and Claude Sonnet 4.6 (Antigravity IDE Agent)
 
 ## 2. Key Prompts and Workflow
 | Prompt Order | Goal / Intent | AI Output Quality / Issues | Student Action / Refinement |
@@ -15,7 +13,8 @@
 | 5 | Review Issue 5 Implementation Plan | Drafted a plan for Ticket Detail and soft-removal. | Approved the plan based on specs (no cancel ticket). |
 | 6 | Execute Issue 5 | Implemented TicketDetailView and Soft-Removal Modal. | Tested the upload and removal flow in the browser. |
 | 7 | Create PR Review text | Generated the exact checklist format needed for PR review. | Copied to GitHub and merged PR. |
-| 8 | Implement Issue 7 (E2E Validation) | Installed Playwright and wrote `requester-ticket-flow.spec.ts`. | Verified screenshots generated in `artifacts/lab-02/screenshots/`. |
+| 8 | Implement E2E Validation | Installed Playwright and wrote `requester-ticket-flow.spec.ts`. | Verified screenshots generated in `artifacts/lab-02/screenshots/`. |
+| 9 | Implement Issue 7 (Expand Seed Data) | Suggested adding 7 sample tickets to match the labsheet screenshots, ensuring all stay in NEW status. | Verified UI pagination and correct ticket statuses. |
 
 ## 3. My Reflection
 Using an AI Agent for Spec-Driven Development (Spec DD) has been incredibly efficient. The agent performs best when given explicit, numbered business rules and acceptance criteria to follow. When requirements are ambiguous, the agent is forced to guess, which can lead to rework. 

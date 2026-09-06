@@ -19,7 +19,8 @@ main (at Lab 1 completion)
         ├── feature/4-my-tickets               ──(PR #19)──> lab2-staging
         ├── feature/5-ticket-detail            ──(PR #21)──> lab2-staging
         ├── feature/6-ui-compliance-fix        ──(PR #23)──> lab2-staging
-        ├── feature/7-seed-varied-status       ──(PR #24)──> lab2-staging
+        ├── feature/7-seed-varied-status       ──(PR #25)──> lab2-staging
+        ├── feature/8-revert-issue-7           ──(PR #27)──> lab2-staging
         └── [Release PR to main]
 ```
 
@@ -142,19 +143,33 @@ main (at Lab 1 completion)
 
 ---
 
-### Issue 7: Add varied-status seed data & PENDING UI
+### Issue 7: Expand Seed Data for Pagination & UI Testing
 * **Branch:** `feature/7-seed-varied-status`
-* **PR:** [Link to PR 7]
 * **Requirement IDs:** Lab Sheet Example Match
 * **Scope:**
-  * Update `seed.ts` to include 7 tickets for Jennifer Anderson with varied statuses (`NEW`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, `PENDING`) to match the lab sheet UI examples.
+  * Update `seed.ts` to include 7 sample tickets for Jennifer Anderson to match the quantity in the lab sheet UI examples.
+  * All tickets strictly remain in `NEW` status to comply with Lab 2 lifecycle exclusion rule.
   * Update Ticket numbers for David and Sarah to avoid collision.
-  * Add `PENDING` to `currentStatus` Enum in frontend `api.ts`.
-  * Add `zen-badge-pending` CSS class and integrate into `TicketDetailView.tsx` and `MyTicketsDashboard.tsx`.
-* **Exclusions:** Backend Prisma schema changes (PENDING handled as raw string since Prisma allows it with SQLite/String, though we use String default NEW).
+* **Exclusions:** Backend Prisma schema changes, custom UI states (e.g. PENDING), or ticket lifecycle progression.
 * **Acceptance Criteria:**
   * Jennifer has exactly 7 tickets in My Tickets dashboard.
-  * `PENDING` status renders as a yellow badge.
-  * Status filter includes `PENDING`.
+  * All new sample tickets have `NEW` status.
 * **Dependencies:** Issue 6.
-* **Merge Order:** 7th (Final).
+* **Merge Order:** 7th.
+
+---
+
+### Issue 8: Release Integration, Review & Lab 2 Delivery
+* **Branch:** `lab2-staging`
+* **Requirement IDs:** Section 10.1, 13.1, 13.2, 14
+* **Scope:**
+  * Perform integration audit across all 4 screens and APIs.
+  * Complete `docs/lab-02/reviewer.md` documenting peer review notes and PR history.
+  * Complete `docs/lab-02/ai-use.md` with prompt log and reflection.
+  * Open release PR from `lab2-staging` into `main`.
+* **Exclusions:** Developing directly on `main`.
+* **Acceptance Criteria:**
+  * All tests pass on `lab2-staging` and final `main`.
+  * All 9 answers for PDF submission can be generated from traceable artifacts.
+* **Dependencies:** Issue 7.
+* **Merge Order:** 8th (Final).
