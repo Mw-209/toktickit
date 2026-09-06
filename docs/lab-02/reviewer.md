@@ -16,14 +16,14 @@
 | [PR #27](https://github.com/Mw-209/toktickit/pull/27) | `feature/8-revert-issue-7` | Approved |
 
 **Reviewer comment I received:**
-> [Good job!, Looks good to me! Nice work👍👍, Good! I checked the changes and everything seems fine, This was supposed to go into lab2-staging, not main 😭/Looks good now!, I’ve checked the changes and everything looks fine. Good to go!,great!, ]
+> [Good job!, Looks good to me! Nice work👍👍, Good! I checked the changes and everything seems fine, This was supposed to go into lab2-staging, not main 😭/Looks good now!, I’ve checked the changes and everything looks fine. Good to go!,great!, good]
 
 **How I responded:**
-> [thank you, Thank you for the review and approval!, Thanks for checking! 😊, Fixed! 😊, Thank you for checking!, Thanks!!!!, Thanks for reviewing, ]
+> [thank you, Thank you for the review and approval!, Thanks for checking! 😊, Fixed! 😊, Thank you for checking!, Thanks!!!!, Thanks for reviewing, 🙏🏻 Thank you for checking.]
 
 ## Pull Requests I reviewed for my partner
 **My comment:**
-> [It look good, Nice👍, You did so well!, Great! Everything looks good]
+> [It look good, Nice👍, You did so well!, Great! Everything looks good, Perfect, ]
 
 **Partner's response:**
-> [Thanks!, Cool, moving on to the next task!, Thanks for checking!❤️❤️, Thanks for checking, mate!, ]
+> [Thanks!, Cool, moving on to the next task!, Thanks for checking!❤️❤️, Thanks for checking, mate!, Thank,]
