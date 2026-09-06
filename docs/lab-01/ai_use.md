@@ -19,5 +19,4 @@
 
 
 ## Reflection
-Two or three sentences: what made your prompts better, and one place you had to
-correct or reject what the agent produced.
+My prompts improved once I included the exact error message and file path instead of describing the problem generally — this let the agent fix issues like the Prisma P1001 error immediately instead of guessing. In prompt #10, I had to correct the agent's first suggestion (rewriting `api.ts` for a fetch bug) after realizing the real issue was the backend server had crashed, not the frontend code.

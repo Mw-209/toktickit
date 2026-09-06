@@ -1,55 +1,92 @@
-import { useState } from "react";
-import { checkSystem, Category } from "./api.js";
+import { useState, useEffect } from "react";
+import { useRequester } from "./context/RequesterContext.js";
+import RequesterSelector from "./components/RequesterSelector.js";
+import Navbar from "./components/Navbar.js";
+import CreateTicketForm from "./components/CreateTicketForm.js";
+import MyTicketsDashboard from "./components/MyTicketsDashboard.js";
+import TicketDetailView from "./components/TicketDetailView.js";
+import { Category, RelatedSystem, fetchCategories, fetchRelatedSystems } from "./api.js";
 
-// UI states you must handle for Issue 4: idle, loading, success, error.
-type UiState = "idle" | "loading" | "success" | "error";
+type Page = "my-tickets" | "create-ticket" | "ticket-detail";
 
 export default function App() {
-  const [state, setState] = useState<UiState>("idle");
+  const { selectedRequester } = useRequester();
+  const [currentPage, setCurrentPage] = useState<Page>("my-tickets");
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  void categories;
+  const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
 
-  async function handleCheck() {
-    setState("loading");
-    try {
-      const result = await checkSystem();
-      setCategories(result.categories);
-      setState("success");
-    } catch {
-      setState("error");
+  useEffect(() => {
+    fetchCategories().then(setCategories).catch(() => {});
+    fetchRelatedSystems().then(setRelatedSystems).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!selectedRequester) {
+      setCurrentPage("my-tickets");
+      setSelectedTicketId(null);
     }
+  }, [selectedRequester]);
+
+  // AC-02: Guard — redirect to selector if no requester is selected
+  if (!selectedRequester) {
+    return <RequesterSelector />;
   }
 
+  const handleTicketCreated = (ticketNumber: string) => {
+    setSuccessMsg(`✅ Ticket ${ticketNumber} created successfully!`);
+    setCurrentPage("my-tickets");
+    setDashboardRefreshKey((k) => k + 1);
+    setTimeout(() => setSuccessMsg(null), 6000);
+  };
+
+  const handleViewTicket = (ticketId: number) => {
+    setSelectedTicketId(ticketId);
+    setCurrentPage("ticket-detail");
+  };
+
+  const handleNavigate = (page: "my-tickets" | "create-ticket") => {
+    setCurrentPage(page);
+  };
+
   return (
-    <div className="container py-5" style={{ maxWidth: 640 }}>
-      <h1 className="h3 mb-4">
-        TokTickIT <span className="text-success">IT Service Desk</span>
-      </h1>
+    <div style={{ minHeight: "100vh", background: "var(--color-bg-page)" }}>
+      <Navbar currentPage={currentPage === "ticket-detail" ? "other" : currentPage} onNavigate={handleNavigate} />
+      <div className="zen-container" style={{ paddingTop: "1.5rem" }}>
 
-      <button className="btn btn-success" onClick={handleCheck} disabled={state === "loading"}>
-        {state === "loading" ? "Loading…" : "Check System"}
-      </button>
-
-      {state === "success" && (
-        <div className="mt-3">
-          <p className="text-success fw-bold">✅ Online</p>
-          <div className="mt-4">
-            <h2 className="h5">Supported Request Categories:</h2>
-            <ul className="list-unstyled">
-              {categories.map((category) => (
-                <li key={category.id}>• {category.name}</li>
-              ))}
-            </ul>
+        {successMsg && (
+          <div className="zen-alert-success" style={{ marginBottom: "1.25rem" }}>
+            {successMsg}
           </div>
-        </div>
-      )}
+        )}
 
-      {state === "error" && (
-        <div className="mt-3 text-danger fw-bold">
-          <p>❌ Offline</p>
-          <p>Unable to connect to TokTickIT API</p>
-        </div>
-      )}
+        {currentPage === "my-tickets" && (
+          <MyTicketsDashboard
+            onViewTicket={handleViewTicket}
+            onCreateTicket={() => setCurrentPage("create-ticket")}
+            refreshKey={dashboardRefreshKey}
+          />
+        )}
+
+        {currentPage === "create-ticket" && (
+          <CreateTicketForm
+            categories={categories}
+            relatedSystems={relatedSystems}
+            onSuccess={handleTicketCreated}
+            onCancel={() => setCurrentPage("my-tickets")}
+          />
+        )}
+
+        {currentPage === "ticket-detail" && selectedTicketId && (
+          <TicketDetailView 
+            ticketId={selectedTicketId} 
+            onBack={() => setCurrentPage("my-tickets")} 
+          />
+        )}
+
+      </div>
     </div>
   );
 }
