@@ -143,33 +143,28 @@ main (at Lab 1 completion)
 
 ---
 
-### Issue 7: Expand Seed Data for Pagination & UI Testing
+### Issue 7: Add varied-status seed data & PENDING UI
 * **Branch:** `feature/7-seed-varied-status`
 * **Requirement IDs:** Lab Sheet Example Match
 * **Scope:**
-  * Update `seed.ts` to include 7 sample tickets for Jennifer Anderson to match the quantity in the lab sheet UI examples.
-  * All tickets strictly remain in `NEW` status to comply with Lab 2 lifecycle exclusion rule.
-  * Update Ticket numbers for David and Sarah to avoid collision.
-* **Exclusions:** Backend Prisma schema changes, custom UI states (e.g. PENDING), or ticket lifecycle progression.
+  * Update `seed.ts` to include 7 sample tickets for Jennifer Anderson with varied statuses to match the lab sheet UI examples.
+* **Exclusions:** Backend Prisma schema changes.
 * **Acceptance Criteria:**
   * Jennifer has exactly 7 tickets in My Tickets dashboard.
-  * All new sample tickets have `NEW` status.
 * **Dependencies:** Issue 6.
 * **Merge Order:** 7th.
 
 ---
 
-### Issue 8: Release Integration, Review & Lab 2 Delivery
-* **Branch:** `lab2-staging`
-* **Requirement IDs:** Section 10.1, 13.1, 13.2, 14
+### Issue 8: Revert & Refine Seed Data to Strict Lab Rules
+* **Branch:** `feature/8-revert-issue-7`
+* **Requirement IDs:** Lab 2 lifecycle exclusion rule
 * **Scope:**
-  * Perform integration audit across all 4 screens and APIs.
-  * Complete `docs/lab-02/reviewer.md` documenting peer review notes and PR history.
-  * Complete `docs/lab-02/ai-use.md` with prompt log and reflection.
-  * Open release PR from `lab2-staging` into `main`.
-* **Exclusions:** Developing directly on `main`.
+  * Revert custom UI states (e.g. PENDING) to comply strictly with Lab 2 rules.
+  * Re-seed 7 sample tickets for Jennifer Anderson but ensure ALL are in `NEW` status.
+  * Update Ticket numbers for David and Sarah to avoid collision.
+* **Exclusions:** Ticket lifecycle progression.
 * **Acceptance Criteria:**
-  * All tests pass on `lab2-staging` and final `main`.
-  * All 9 answers for PDF submission can be generated from traceable artifacts.
+  * All new sample tickets have `NEW` status.
 * **Dependencies:** Issue 7.
 * **Merge Order:** 8th (Final).
