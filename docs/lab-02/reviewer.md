@@ -23,7 +23,7 @@
 
 ## Pull Requests I reviewed for my partner
 **My comment:**
-> [It look good, Nice👍, You did so well!, Great! Everything looks good, Perfect, ]
+> [It look good, Nice👍, You did so well!, Great! Everything looks good, Perfect, All acceptance criteria passed]
 
 **Partner's response:**
-> [Thanks!, Cool, moving on to the next task!, Thanks for checking!❤️❤️, Thanks for checking, mate!, Thank,]
+> [Thanks!, Cool, moving on to the next task!, Thanks for checking!❤️❤️, Thanks for checking, mate!, Thank, Thank for checking!]
