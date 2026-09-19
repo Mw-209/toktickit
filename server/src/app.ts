@@ -1123,8 +1123,171 @@ app.post("/api/tickets/:id/resolve-indication", requireAuth, requireRole("REQUES
   }
 });
 
-app.get("/api/admin/users", requireAuth, requireRole("ADMINISTRATOR"), (req, res) => {
-  return res.status(501).json({ error: { message: "Not Implemented" } });
+// GET /api/admin/users: List users
+app.get("/api/admin/users", requireAuth, requireRole("ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const { search, role } = req.query;
+    const prisma = getPrisma();
+
+    const where: any = {};
+
+    if (role && typeof role === "string") {
+      where.role = role.toUpperCase();
+    }
+
+    if (search && typeof search === "string") {
+      const q = search.trim();
+      where.OR = [
+        { name: { contains: q } },
+        { email: { contains: q } }
+      ];
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+        createdAt: true,
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return res.status(200).json({ users });
+  } catch (error) {
+    console.error("Failed to fetch admin users:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
+// POST /api/admin/users: Create new user
+app.post("/api/admin/users", requireAuth, requireRole("ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const { name, email, role, password, isActive } = req.body;
+
+    if (!name || !email || !role || !password) {
+      return res.status(400).json({ error: { message: "Name, email, role, and password are required." } });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: { message: "Password must be at least 8 characters." } });
+    }
+
+    const validRoles = ["REQUESTER", "IT_STAFF", "ADMINISTRATOR"];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: { message: "Invalid role." } });
+    }
+
+    const prisma = getPrisma();
+    const existing = await prisma.user.findUnique({ where: { email: String(email).trim().toLowerCase() } });
+    if (existing) {
+      return res.status(409).json({ error: { message: "Email already in use." } });
+    }
+
+    const hashedPassword = await hashPassword(password);
+    
+    const user = await prisma.user.create({
+      data: {
+        name: String(name).trim(),
+        email: String(email).trim().toLowerCase(),
+        role,
+        passwordHash: hashedPassword,
+        isActive: isActive !== undefined ? Boolean(isActive) : true,
+        mustChangePassword: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+        createdAt: true,
+      }
+    });
+
+    return res.status(201).json(user);
+  } catch (error) {
+    console.error("Failed to create user:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
+// PATCH /api/admin/users/:id: Edit user
+app.patch("/api/admin/users/:id", requireAuth, requireRole("ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const userIdToEdit = parseInt(req.params.id, 10);
+    const { name, email, role, isActive, newPassword } = req.body;
+    
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({ where: { id: userIdToEdit } });
+    if (!user) {
+      return res.status(404).json({ error: { message: "User not found." } });
+    }
+
+    const data: any = {};
+
+    if (name !== undefined) {
+      if (!name) return res.status(400).json({ error: { message: "Name cannot be empty." } });
+      data.name = String(name).trim();
+    }
+
+    if (email !== undefined) {
+      if (!email) return res.status(400).json({ error: { message: "Email cannot be empty." } });
+      const emailLower = String(email).trim().toLowerCase();
+      
+      if (emailLower !== user.email) {
+        const existing = await prisma.user.findUnique({ where: { email: emailLower } });
+        if (existing) {
+          return res.status(409).json({ error: { message: "Email already in use." } });
+        }
+        data.email = emailLower;
+      }
+    }
+
+    if (role !== undefined) {
+      const validRoles = ["REQUESTER", "IT_STAFF", "ADMINISTRATOR"];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: { message: "Invalid role." } });
+      }
+      data.role = role;
+    }
+
+    if (isActive !== undefined) {
+      data.isActive = Boolean(isActive);
+    }
+
+    if (newPassword !== undefined && newPassword !== "") {
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: { message: "Password must be at least 8 characters." } });
+      }
+      data.passwordHash = await hashPassword(newPassword);
+      data.mustChangePassword = true;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userIdToEdit },
+      data,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        mustChangePassword: true,
+        createdAt: true,
+      }
+    });
+
+    return res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error("Failed to update user:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
 });
 
 export default app;

@@ -8,6 +8,7 @@ import MyTicketsDashboard from "./components/MyTicketsDashboard.js";
 import TicketDetailView from "./components/TicketDetailView.js";
 import { StaffTicketQueue } from "./components/StaffTicketQueue.js";
 import StaffTicketDetail from "./components/StaffTicketDetail.js";
+import { AdminUserManagement } from "./components/AdminUserManagement.js";
 import { Category, RelatedSystem, fetchCategories, fetchRelatedSystems, checkSystem, SystemStatus } from "./api.js";
 
 type Page = "my-tickets" | "create-ticket" | "ticket-detail" | "staff-queue" | "staff-ticket-detail" | "admin-users";
@@ -131,10 +132,7 @@ export default function App() {
 
 
         {currentPage === "admin-users" && (
-          <div className="zen-card" style={{ padding: "2rem", textAlign: "center" }}>
-            <h2>User Management</h2>
-            <p style={{ color: "var(--color-text-secondary)" }}>Not implemented in this sprint.</p>
-          </div>
+          <AdminUserManagement />
         )}
 
       </div>

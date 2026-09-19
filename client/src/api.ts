@@ -61,8 +61,23 @@ export interface PublicComment {
 export interface InternalNote {
   id: number;
   ticketId: number;
-  author: { id: number; name: string; role: string };
+  authorId: number;
   content: string;
+  createdAt: string;
+  author: {
+    id: number;
+    name: string;
+    role: string;
+  };
+}
+
+export interface UserAdminData {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  mustChangePassword: boolean;
   createdAt: string;
 }
 
@@ -381,6 +396,50 @@ export async function postNote(ticketId: number, content: string): Promise<Inter
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
     throw new Error(errData.error?.message || "Failed to post note");
+  }
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Lab 3 - Admin User Management Endpoints
+// ---------------------------------------------------------------------------
+
+export async function fetchAdminUsers(search?: string, role?: string): Promise<UserAdminData[]> {
+  const params = new URLSearchParams();
+  if (search) params.append("search", search);
+  if (role && role !== "All") params.append("role", role);
+  
+  const res = await fetch(`${API_URL}/api/admin/users?${params.toString()}`, fetchOpts({ method: "GET" }));
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error?.message || "Failed to fetch users");
+  }
+  const data = await res.json();
+  return data.users;
+}
+
+export async function createAdminUser(userData: Partial<UserAdminData> & { password?: string }): Promise<UserAdminData> {
+  const res = await fetch(`${API_URL}/api/admin/users`, fetchOpts({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(userData),
+  }));
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error?.message || "Failed to create user");
+  }
+  return res.json();
+}
+
+export async function updateAdminUser(id: number, userData: Partial<UserAdminData> & { newPassword?: string }): Promise<UserAdminData> {
+  const res = await fetch(`${API_URL}/api/admin/users/${id}`, fetchOpts({
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(userData),
+  }));
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error?.message || "Failed to update user");
   }
   return res.json();
 }
