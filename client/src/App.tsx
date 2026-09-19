@@ -128,12 +128,6 @@ export default function App() {
           />
         )}
 
-        {currentPage === "staff-queue" && (
-          <div className="zen-card" style={{ padding: "2rem", textAlign: "center" }}>
-            <h2>IT Staff Queue</h2>
-            <p style={{ color: "var(--color-text-secondary)" }}>Not implemented in this sprint.</p>
-          </div>
-        )}
 
         {currentPage === "admin-users" && (
           <div className="zen-card" style={{ padding: "2rem", textAlign: "center" }}>
