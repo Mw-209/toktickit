@@ -269,7 +269,10 @@ export async function postComment(ticketId: number, content: string): Promise<Pu
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   }));
-  if (!res.ok) throw new Error("Failed to post comment");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error?.message || "Failed to post comment");
+  }
   return res.json();
 }
 
@@ -375,7 +378,10 @@ export async function postNote(ticketId: number, content: string): Promise<Inter
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   }));
-  if (!res.ok) throw new Error("Failed to post note");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error?.message || "Failed to post note");
+  }
   return res.json();
 }
 

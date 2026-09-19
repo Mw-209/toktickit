@@ -1021,7 +1021,11 @@ app.post("/api/tickets/:id/comments", requireAuth, async (req: Request, res: Res
     }
 
     const comment = await prisma.publicComment.create({
-      data: { ticketId, authorId: sessionUser.id, content },
+      data: { 
+        ticket: { connect: { id: ticketId } }, 
+        author: { connect: { id: sessionUser.id } }, 
+        content 
+      },
       include: { author: { select: { id: true, name: true, role: true } } },
     });
 
@@ -1070,7 +1074,11 @@ app.post("/api/tickets/:id/notes", requireAuth, requireRole("IT_STAFF", "ADMINIS
     if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
 
     const note = await prisma.internalNote.create({
-      data: { ticketId, authorId: sessionUser.id, content },
+      data: { 
+        ticket: { connect: { id: ticketId } }, 
+        author: { connect: { id: sessionUser.id } }, 
+        content 
+      },
       include: { author: { select: { id: true, name: true, role: true } } },
     });
 
