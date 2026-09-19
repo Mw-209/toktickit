@@ -984,7 +984,7 @@ app.get("/api/tickets/:id/comments", requireAuth, async (req: Request, res: Resp
     if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
 
     // Requester can only access their own tickets
-    if (sessionUser.role === "REQUESTER" && ticket.userId !== sessionUser.id && ticket.requesterId !== sessionUser.id) {
+    if (sessionUser.role === "REQUESTER" && ticket.userId !== sessionUser.userId && ticket.requesterId !== sessionUser.userId) {
       return res.status(403).json({ error: { message: "Forbidden" } });
     }
 
@@ -1016,7 +1016,7 @@ app.post("/api/tickets/:id/comments", requireAuth, async (req: Request, res: Res
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
 
-    if (sessionUser.role === "REQUESTER" && ticket.userId !== sessionUser.id && ticket.requesterId !== sessionUser.id) {
+    if (sessionUser.role === "REQUESTER" && ticket.userId !== sessionUser.userId && ticket.requesterId !== sessionUser.userId) {
       return res.status(403).json({ error: { message: "Forbidden" } });
     }
 
@@ -1099,7 +1099,7 @@ app.post("/api/tickets/:id/resolve-indication", requireAuth, requireRole("REQUES
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
 
-    if (ticket.userId !== sessionUser.id && ticket.requesterId !== sessionUser.id) {
+    if (ticket.userId !== sessionUser.userId && ticket.requesterId !== sessionUser.userId) {
       return res.status(403).json({ error: { message: "Forbidden" } });
     }
 
