@@ -50,6 +50,22 @@ export interface Attachment {
   createdAt: string;
 }
 
+export interface PublicComment {
+  id: number;
+  ticketId: number;
+  author: { id: number; name: string; role: string };
+  content: string;
+  createdAt: string;
+}
+
+export interface InternalNote {
+  id: number;
+  ticketId: number;
+  author: { id: number; name: string; role: string };
+  content: string;
+  createdAt: string;
+}
+
 export interface Ticket {
   id: number;
   ticketNumber: string;
@@ -238,6 +254,35 @@ export function getAttachmentDownloadUrl(attachmentId: number): string {
   return `${API_URL}/api/attachments/${attachmentId}/download`;
 }
 
+// --- Ticket Detail Endpoints ---
+
+export async function fetchComments(ticketId: number): Promise<PublicComment[]> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/comments`, fetchOpts());
+  if (!res.ok) throw new Error("Failed to fetch comments");
+  const data = await res.json();
+  return data.comments || [];
+}
+
+export async function postComment(ticketId: number, content: string): Promise<PublicComment> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/comments`, fetchOpts({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  }));
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error?.message || "Failed to post comment");
+  }
+  return res.json();
+}
+
+export async function indicateTicketResolved(ticketId: number): Promise<void> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/resolve-indication`, fetchOpts({
+    method: "POST"
+  }));
+  if (!res.ok) throw new Error("Failed to indicate resolved");
+}
+
 // --- Auth Endpoints ---
 
 export async function login(credentials: LoginCredentials): Promise<void> {
@@ -298,6 +343,45 @@ export async function fetchStaffTickets(filters: StaffTicketFilters = {}): Promi
 export async function fetchStaffAssignees(): Promise<{ assignees: StaffAssignee[] }> {
   const res = await fetch(`${API_URL}/api/staff/assignees`, fetchOpts());
   if (!res.ok) throw new Error("Failed to fetch staff assignees");
+  return res.json();
+}
+
+export async function fetchStaffTicketDetail(id: number): Promise<Ticket> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${id}`, fetchOpts());
+  if (!res.ok) throw new Error("Failed to fetch ticket detail");
+  return res.json();
+}
+
+export async function updateTicketStatus(id: number, updates: { assignedToId?: number | null, itPriority?: string, currentStatus?: string }): Promise<Ticket> {
+  const res = await fetch(`${API_URL}/api/staff/tickets/${id}`, fetchOpts({
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  }));
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error?.message || "Failed to update ticket");
+  }
+  return res.json();
+}
+
+export async function fetchNotes(ticketId: number): Promise<InternalNote[]> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/notes`, fetchOpts());
+  if (!res.ok) throw new Error("Failed to fetch notes");
+  const data = await res.json();
+  return data.notes || [];
+}
+
+export async function postNote(ticketId: number, content: string): Promise<InternalNote> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/notes`, fetchOpts({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  }));
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error?.message || "Failed to post note");
+  }
   return res.json();
 }
 

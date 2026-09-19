@@ -866,15 +866,264 @@ app.get("/api/staff/tickets", requireAuth, requireRole("IT_STAFF", "ADMINISTRATO
   }
 });
 
-app.patch("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), (req, res) => {
-  return res.status(501).json({ error: { message: "Not Implemented" } });
+// GET /api/staff/tickets/:id: Fetch full ticket detail for IT Staff
+app.get("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const ticketId = parseInt(req.params.id, 10);
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      include: {
+        category: true,
+        relatedSystem: true,
+        assignedTo: { select: { id: true, name: true, role: true } },
+        requester: { select: { id: true, name: true, email: true } },
+        attachments: {
+          select: {
+            id: true,
+            ticketId: true,
+            originalName: true,
+            storedName: true,
+            mimeType: true,
+            sizeBytes: true,
+            isRemoved: true,
+            removedAt: true,
+            removalReason: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
+    return res.status(200).json(ticket);
+  } catch (error) {
+    console.error("Failed to fetch ticket detail:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
+// PATCH /api/staff/tickets/:id: Update Ticket (Claim, Priority, Status)
+app.patch("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const ticketId = parseInt(req.params.id, 10);
+    const { assignedToId, itPriority, currentStatus } = req.body;
+    const prisma = getPrisma();
+
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
+
+    const updateData: any = {};
+
+    if (assignedToId !== undefined) {
+      if (assignedToId === null) {
+        updateData.assignedToId = null;
+      } else {
+        const staff = await prisma.user.findUnique({ where: { id: assignedToId } });
+        if (!staff || (staff.role !== "IT_STAFF" && staff.role !== "ADMINISTRATOR")) {
+          return res.status(400).json({ error: { message: "Invalid assignedToId. Must be IT_STAFF or ADMINISTRATOR." } });
+        }
+        updateData.assignedToId = assignedToId;
+      }
+    }
+
+    if (itPriority !== undefined) {
+      if (!["LOW", "MEDIUM", "HIGH", "URGENT"].includes(itPriority)) {
+        return res.status(400).json({ error: { message: "Invalid itPriority." } });
+      }
+      updateData.itPriority = itPriority;
+    }
+
+    if (currentStatus !== undefined) {
+      // BR-13: Status Transition Rules Validation
+      const validTransitions: Record<string, string[]> = {
+        NEW: ["IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"],
+        OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"], // legacy OPEN support if needed
+        IN_PROGRESS: ["WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
+        WAITING_FOR_REQUESTER: ["IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"],
+        RESOLVED: ["REOPENED", "CLOSED"],
+        CLOSED: ["REOPENED"],
+        REOPENED: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
+        CANCELLED: ["REOPENED"],
+      };
+
+      const allowed = validTransitions[ticket.currentStatus] || [];
+      if (!allowed.includes(currentStatus) && ticket.currentStatus !== currentStatus) {
+        return res.status(422).json({ error: { message: `Invalid status transition from ${ticket.currentStatus} to ${currentStatus}.` } });
+      }
+      updateData.currentStatus = currentStatus;
+    }
+
+    const updatedTicket = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: updateData,
+      include: {
+        category: true,
+        relatedSystem: true,
+        assignedTo: { select: { id: true, name: true, role: true } },
+        requester: { select: { id: true, name: true, email: true } },
+        attachments: true,
+      },
+    });
+
+    return res.status(200).json(updatedTicket);
+  } catch (error) {
+    console.error("Failed to update ticket:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
+// GET /api/tickets/:id/comments: Fetch public comments
+app.get("/api/tickets/:id/comments", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const ticketId = parseInt(req.params.id, 10);
+    const prisma = getPrisma();
+    const sessionUser = req.user as any;
+
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
+
+    // Requester can only access their own tickets
+    if (sessionUser.role === "REQUESTER" && ticket.userId !== sessionUser.userId && ticket.requesterId !== sessionUser.userId) {
+      return res.status(403).json({ error: { message: "Forbidden" } });
+    }
+
+    const comments = await prisma.publicComment.findMany({
+      where: { ticketId },
+      include: { author: { select: { id: true, name: true, role: true } } },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return res.status(200).json({ comments });
+  } catch (error) {
+    console.error("Failed to fetch comments:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
+// POST /api/tickets/:id/comments: Add public comment
+app.post("/api/tickets/:id/comments", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const ticketId = parseInt(req.params.id, 10);
+    const content = (req.body.content || "").trim();
+    const sessionUser = req.user as any;
+
+    if (!content || content.length > 2000) {
+      return res.status(400).json({ error: { message: "Content must be between 1 and 2000 characters." } });
+    }
+
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
+
+    if (sessionUser.role === "REQUESTER" && ticket.userId !== sessionUser.userId && ticket.requesterId !== sessionUser.userId) {
+      return res.status(403).json({ error: { message: "Forbidden" } });
+    }
+
+    const comment = await prisma.publicComment.create({
+      data: { 
+        ticket: { connect: { id: ticketId } }, 
+        author: { connect: { id: sessionUser.userId } }, 
+        content 
+      },
+      include: { author: { select: { id: true, name: true, role: true } } },
+    });
+
+    return res.status(201).json(comment);
+  } catch (error: any) {
+    console.error("Failed to create comment:", error);
+    return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
+  }
+});
+
+// GET /api/tickets/:id/notes: Fetch internal notes
+app.get("/api/tickets/:id/notes", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const ticketId = parseInt(req.params.id, 10);
+    const prisma = getPrisma();
+    
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
+
+    const notes = await prisma.internalNote.findMany({
+      where: { ticketId },
+      include: { author: { select: { id: true, name: true, role: true } } },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return res.status(200).json({ notes });
+  } catch (error) {
+    console.error("Failed to fetch notes:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
+// POST /api/tickets/:id/notes: Add internal note
+app.post("/api/tickets/:id/notes", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const ticketId = parseInt(req.params.id, 10);
+    const content = (req.body.content || "").trim();
+    const sessionUser = req.user as any;
+
+    if (!content || content.length > 2000) {
+      return res.status(400).json({ error: { message: "Content must be between 1 and 2000 characters." } });
+    }
+
+    const prisma = getPrisma();
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
+
+    const note = await prisma.internalNote.create({
+      data: { 
+        ticket: { connect: { id: ticketId } }, 
+        author: { connect: { id: sessionUser.userId } }, 
+        content 
+      },
+      include: { author: { select: { id: true, name: true, role: true } } },
+    });
+
+    return res.status(201).json(note);
+  } catch (error: any) {
+    console.error("Failed to create note:", error);
+    return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
+  }
+});
+
+// POST /api/tickets/:id/resolve-indication: Requester indicates ticket appears resolved
+app.post("/api/tickets/:id/resolve-indication", requireAuth, requireRole("REQUESTER"), async (req: Request, res: Response) => {
+  try {
+    const ticketId = parseInt(req.params.id, 10);
+    const sessionUser = req.user as any;
+    const prisma = getPrisma();
+
+    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
+
+    if (ticket.userId !== sessionUser.userId && ticket.requesterId !== sessionUser.userId) {
+      return res.status(403).json({ error: { message: "Forbidden" } });
+    }
+
+    if (["RESOLVED", "CLOSED", "CANCELLED"].includes(ticket.currentStatus)) {
+      return res.status(403).json({ error: { message: "Cannot indicate resolved on a closed/resolved ticket." } });
+    }
+
+    if (ticket.resolveIndicatedAt) {
+      return res.status(409).json({ error: { message: "Already indicated resolved." } });
+    }
+
+    const updated = await prisma.ticket.update({
+      where: { id: ticketId },
+      data: { resolveIndicatedAt: new Date() },
+    });
+
+    return res.status(200).json({ ticketId: updated.id, resolveIndicatedAt: updated.resolveIndicatedAt });
+  } catch (error) {
+    console.error("Failed to indicate resolved:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
 });
 
 app.get("/api/admin/users", requireAuth, requireRole("ADMINISTRATOR"), (req, res) => {
-  return res.status(501).json({ error: { message: "Not Implemented" } });
-});
-
-app.get("/api/tickets/:id/notes", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), (req, res) => {
   return res.status(501).json({ error: { message: "Not Implemented" } });
 });
 
