@@ -7,7 +7,16 @@ import {
   Category,
   StaffAssignee,
 } from "../api";
-import { format } from "date-fns";
+
+// Helper function to format date
+const formatDate = (dateStr: string) => {
+  const d = new Date(dateStr);
+  const month = d.toLocaleString('en-US', { month: 'short' });
+  const day = d.getDate();
+  const hours = d.getHours().toString().padStart(2, '0');
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  return `${month} ${day}, ${hours}:${minutes}`;
+};
 
 interface Props {
   onNavigate: (page: string, params?: any) => void;
@@ -257,7 +266,7 @@ export function StaffTicketQueue({ onNavigate }: Props) {
                 {tickets.map((t) => (
                   <tr key={t.id}>
                     <td><strong>{t.ticketNumber}</strong></td>
-                    <td className="zen-meta">{format(new Date(t.createdAt), "MMM d, HH:mm")}</td>
+                    <td className="zen-meta">{formatDate(t.createdAt)}</td>
                     <td>
                       <div style={{ maxWidth: "200px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={t.summary}>
                         {t.summary}
@@ -268,7 +277,7 @@ export function StaffTicketQueue({ onNavigate }: Props) {
                     <td><span className={`zen-badge ${getPriorityClass(t.itPriority)}`}>{t.itPriority || "-"}</span></td>
                     <td><span className={`zen-badge zen-status-${t.currentStatus.toLowerCase()}`}>{t.currentStatus}</span></td>
                     <td>{t.assignedTo?.name || <span className="zen-meta">Unassigned</span>}</td>
-                    <td className="zen-meta">{format(new Date(t.updatedAt), "MMM d, HH:mm")}</td>
+                    <td className="zen-meta">{formatDate(t.updatedAt)}</td>
                     <td>
                       <button 
                         className="zen-btn-secondary" 
@@ -298,7 +307,7 @@ export function StaffTicketQueue({ onNavigate }: Props) {
                   <span>Owner: {t.assignedTo?.name || "Unassigned"}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span className="zen-meta" style={{ fontSize: "0.8rem" }}>{format(new Date(t.updatedAt), "MMM d, HH:mm")}</span>
+                  <span className="zen-meta" style={{ fontSize: "0.8rem" }}>{formatDate(t.updatedAt)}</span>
                   <button 
                     className="zen-btn-secondary" 
                     onClick={() => onNavigate("staff-ticket-detail", { ticketId: t.id })}
