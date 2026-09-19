@@ -7,6 +7,7 @@ import CreateTicketForm from "./components/CreateTicketForm.js";
 import MyTicketsDashboard from "./components/MyTicketsDashboard.js";
 import TicketDetailView from "./components/TicketDetailView.js";
 import { StaffTicketQueue } from "./components/StaffTicketQueue.js";
+import StaffTicketDetail from "./components/StaffTicketDetail.js";
 import { Category, RelatedSystem, fetchCategories, fetchRelatedSystems, checkSystem, SystemStatus } from "./api.js";
 
 type Page = "my-tickets" | "create-ticket" | "ticket-detail" | "staff-queue" | "staff-ticket-detail" | "admin-users";
@@ -115,10 +116,10 @@ export default function App() {
         )}
 
         {currentPage === "staff-ticket-detail" && selectedTicketId && (
-          <div style={{ textAlign: "center", padding: "3rem" }}>
-            <p className="zen-meta">Staff Ticket Detail view is not yet implemented (Issue 5).</p>
-            <button className="zen-btn-secondary" onClick={() => setCurrentPage("staff-queue")} style={{ marginTop: "1rem" }}>Back to Queue</button>
-          </div>
+          <StaffTicketDetail
+            ticketId={selectedTicketId}
+            onBack={() => setCurrentPage("staff-queue")}
+          />
         )}
 
         {currentPage === "ticket-detail" && selectedTicketId && (

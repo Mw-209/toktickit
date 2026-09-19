@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Ticket, Attachment, fetchTicketDetail, uploadAttachment, softRemoveAttachment, getAttachmentDownloadUrl } from "../api.js";
+import { Ticket, Attachment, PublicComment, fetchTicketDetail, uploadAttachment, softRemoveAttachment, getAttachmentDownloadUrl, fetchComments, postComment, indicateTicketResolved } from "../api.js";
 
 interface TicketDetailViewProps {
   ticketId: number;
@@ -22,12 +22,20 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
+  // Comments state
+  const [comments, setComments] = useState<PublicComment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [postingComment, setPostingComment] = useState(false);
+  const [resolving, setResolving] = useState(false);
+
   const loadTicket = async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await fetchTicketDetail(ticketId);
       setTicket(data);
+      const cData = await fetchComments(ticketId);
+      setComments(cData);
     } catch (err: any) {
       setError(err.message || "Failed to load ticket details");
     } finally {
@@ -94,6 +102,34 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
     }
   };
 
+  const handlePostComment = async () => {
+    if (!newComment.trim()) return;
+    setPostingComment(true);
+    try {
+      await postComment(ticketId, newComment);
+      setNewComment("");
+      const cData = await fetchComments(ticketId);
+      setComments(cData);
+    } catch (err: any) {
+      alert(err.message || "Failed to post comment");
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  const handleIndicateResolved = async () => {
+    if (!window.confirm("Are you sure you want to indicate the problem appears resolved? IT Staff will be notified.")) return;
+    setResolving(true);
+    try {
+      await indicateTicketResolved(ticketId);
+      await loadTicket();
+    } catch (err: any) {
+      alert(err.message || "Failed to update ticket");
+    } finally {
+      setResolving(false);
+    }
+  };
+
   const getPriorityBadgeClass = (p: string) => {
     switch (p) {
       case "URGENT": return "zen-badge-urgent";
@@ -142,9 +178,27 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
               {ticket.ticketNumber}
             </span>
           </h2>
-          <span className={`zen-badge ${getStatusBadgeClass(ticket.currentStatus)}`}>
-            {ticket.currentStatus.replace("_", " ")}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            {ticket.resolveIndicatedAt ? (
+              <span className="zen-badge" style={{ backgroundColor: "#e0f2fe", color: "#0369a1", border: "1px solid #bae6fd" }}>
+                You indicated this appears resolved on {new Date(ticket.resolveIndicatedAt).toLocaleDateString("th-TH")}
+              </span>
+            ) : (
+              !["RESOLVED", "CLOSED", "CANCELLED"].includes(ticket.currentStatus) && (
+                <button 
+                  className="btn-zen-secondary" 
+                  onClick={handleIndicateResolved}
+                  disabled={resolving}
+                  style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem", color: "#0369a1", borderColor: "#bae6fd", backgroundColor: "#f0f9ff" }}
+                >
+                  {resolving ? "Updating..." : "✓ Problem Appears Resolved"}
+                </button>
+              )
+            )}
+            <span className={`zen-badge ${getStatusBadgeClass(ticket.currentStatus)}`}>
+              {ticket.currentStatus.replace("_", " ")}
+            </span>
+          </div>
         </div>
         
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
@@ -275,6 +329,57 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
               No attachments provided for this ticket.
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Public Comments Card */}
+      <div className="zen-card" style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+        <h3 style={{ margin: "0 0 1rem 0", fontSize: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          💬 Public Comments
+        </h3>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
+          {comments.length > 0 ? comments.map(c => (
+            <div key={c.id} style={{ display: "flex", flexDirection: "column", gap: "0.4rem", padding: "1rem", borderRadius: "var(--radius-lg)", backgroundColor: c.author.role === "REQUESTER" ? "#F9FAFB" : "#F0Fdf4", border: "1px solid", borderColor: c.author.role === "REQUESTER" ? "var(--color-border)" : "#dcfce7" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <strong style={{ fontSize: "0.9rem" }}>{c.author.name}</strong>
+                  <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: "10px", backgroundColor: c.author.role === "REQUESTER" ? "#e5e7eb" : "var(--color-primary-green)", color: c.author.role === "REQUESTER" ? "#374151" : "#fff" }}>
+                    {c.author.role.replace('_', ' ')}
+                  </span>
+                </div>
+                <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                  {new Date(c.createdAt).toLocaleString("th-TH")}
+                </span>
+              </div>
+              <div style={{ fontSize: "0.95rem", whiteSpace: "pre-wrap", color: "var(--color-text)" }}>
+                {c.content}
+              </div>
+            </div>
+          )) : (
+            <p className="zen-meta" style={{ textAlign: "center", margin: "1rem 0" }}>No comments yet. IT Staff will respond here.</p>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          <textarea 
+            className="zen-input" 
+            rows={3} 
+            placeholder="Write a comment..."
+            value={newComment}
+            onChange={e => setNewComment(e.target.value)}
+            maxLength={2000}
+            style={{ resize: "vertical" }}
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button 
+              className="btn-zen-primary" 
+              onClick={handlePostComment} 
+              disabled={!newComment.trim() || postingComment}
+            >
+              {postingComment ? "Posting..." : "Post Comment"}
+            </button>
+          </div>
         </div>
       </div>
 
