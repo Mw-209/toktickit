@@ -6,9 +6,10 @@ import Navbar from "./components/Navbar.js";
 import CreateTicketForm from "./components/CreateTicketForm.js";
 import MyTicketsDashboard from "./components/MyTicketsDashboard.js";
 import TicketDetailView from "./components/TicketDetailView.js";
+import { StaffTicketQueue } from "./components/StaffTicketQueue.js";
 import { Category, RelatedSystem, fetchCategories, fetchRelatedSystems, checkSystem, SystemStatus } from "./api.js";
 
-type Page = "my-tickets" | "create-ticket" | "ticket-detail" | "staff-queue" | "admin-users";
+type Page = "my-tickets" | "create-ticket" | "ticket-detail" | "staff-queue" | "staff-ticket-detail" | "admin-users";
 
 export default function App() {
   const { user, isLoading } = useAuth();
@@ -100,6 +101,26 @@ export default function App() {
           />
         )}
 
+        {currentPage === "staff-queue" && (
+          <StaffTicketQueue
+            onNavigate={(page, params) => {
+              if (page === "staff-ticket-detail" && params?.ticketId) {
+                setSelectedTicketId(params.ticketId);
+                setCurrentPage("staff-ticket-detail");
+              } else {
+                setCurrentPage(page as Page);
+              }
+            }}
+          />
+        )}
+
+        {currentPage === "staff-ticket-detail" && selectedTicketId && (
+          <div style={{ textAlign: "center", padding: "3rem" }}>
+            <p className="zen-meta">Staff Ticket Detail view is not yet implemented (Issue 5).</p>
+            <button className="zen-btn-secondary" onClick={() => setCurrentPage("staff-queue")} style={{ marginTop: "1rem" }}>Back to Queue</button>
+          </div>
+        )}
+
         {currentPage === "ticket-detail" && selectedTicketId && (
           <TicketDetailView 
             ticketId={selectedTicketId} 
@@ -107,12 +128,6 @@ export default function App() {
           />
         )}
 
-        {currentPage === "staff-queue" && (
-          <div className="zen-card" style={{ padding: "2rem", textAlign: "center" }}>
-            <h2>IT Staff Queue</h2>
-            <p style={{ color: "var(--color-text-secondary)" }}>Not implemented in this sprint.</p>
-          </div>
-        )}
 
         {currentPage === "admin-users" && (
           <div className="zen-card" style={{ padding: "2rem", textAlign: "center" }}>

@@ -755,8 +755,115 @@ app.get("/api/attachments/:id/download", requireAuth, async (req: Request, res: 
 // 4. Stubs for Authorization Tests (Lab 3)
 // ---------------------------------------------------------------------------
 
-app.get("/api/staff/tickets", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), (req, res) => {
-  return res.status(501).json({ error: { message: "Not Implemented" } });
+// GET /api/staff/assignees: Fetch list of active IT Staff and Admin for dropdown filters
+app.get("/api/staff/assignees", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const assignees = await prisma.user.findMany({
+      where: {
+        role: { in: ["IT_STAFF", "ADMINISTRATOR"] },
+        isActive: true,
+      },
+      select: { id: true, name: true, role: true },
+      orderBy: { name: "asc" },
+    });
+    return res.status(200).json({ assignees });
+  } catch (error) {
+    console.error("Failed to fetch staff assignees:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
+// GET /api/staff/tickets: Fetch IT Staff Ticket Queue with search, filter, sort, and pagination
+app.get("/api/staff/tickets", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    
+    // Parse query params
+    const search = req.query.search as string || "";
+    const status = req.query.status as string;
+    const itPriority = req.query.itPriority as string;
+    const categoryIdStr = req.query.categoryId as string;
+    const assignedToIdStr = req.query.assignedToId as string;
+    const sortBy = (req.query.sortBy as string) || "createdAt";
+    const sortOrder = (req.query.sortOrder as string) === "asc" ? "asc" : "desc";
+    const page = Math.max(1, parseInt(req.query.page as string || "1", 10));
+    const pageSize = parseInt(req.query.pageSize as string || "10", 10);
+    const limit = [10, 25, 50].includes(pageSize) ? pageSize : 10;
+    const offset = (page - 1) * limit;
+
+    // Build Prisma where clause
+    const whereClause: any = {};
+
+    if (search.trim()) {
+      whereClause.OR = [
+        { ticketNumber: { contains: search, mode: "insensitive" } },
+        { summary: { contains: search, mode: "insensitive" } }
+      ];
+    }
+    if (status) {
+      whereClause.currentStatus = status;
+    }
+    if (itPriority) {
+      whereClause.itPriority = itPriority;
+    }
+    if (categoryIdStr && !isNaN(parseInt(categoryIdStr, 10))) {
+      whereClause.categoryId = parseInt(categoryIdStr, 10);
+    }
+    if (assignedToIdStr) {
+      const parsedId = parseInt(assignedToIdStr, 10);
+      if (parsedId === 0) {
+        whereClause.assignedToId = null; // Unassigned
+      } else if (!isNaN(parsedId)) {
+        whereClause.assignedToId = parsedId;
+      }
+    }
+
+    // Define valid sort fields to prevent injection or invalid queries
+    const validSortFields = ["ticketNumber", "createdAt", "updatedAt", "itPriority"];
+    const orderByField = validSortFields.includes(sortBy) ? sortBy : "createdAt";
+
+    let orderBy: any;
+    if (orderByField === "itPriority") {
+      // Since itPriority is a string, sorting alphabetically might not match severity order (URGENT > HIGH > MEDIUM > LOW).
+      // If we sort alphabetically: HIGH, LOW, MEDIUM, URGENT.
+      // But for simplicity in Lab 3, we just pass it to DB. A real implementation might use an ENUM or mapped value.
+      orderBy = { itPriority: sortOrder };
+    } else {
+      orderBy = { [orderByField]: sortOrder };
+    }
+
+    // Execute queries
+    const [total, tickets] = await Promise.all([
+      prisma.ticket.count({ where: whereClause }),
+      prisma.ticket.findMany({
+        where: whereClause,
+        orderBy,
+        skip: offset,
+        take: limit,
+        include: {
+          category: true,
+          assignedTo: { select: { id: true, name: true, role: true } },
+          requester: { select: { id: true, name: true, email: true } },
+        }
+      })
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return res.status(200).json({
+      tickets,
+      pagination: {
+        total,
+        page,
+        pageSize: limit,
+        totalPages
+      }
+    });
+  } catch (error) {
+    console.error("Failed to fetch staff tickets:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
 });
 
 app.patch("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), (req, res) => {

@@ -57,13 +57,16 @@ export interface Ticket {
   description: string;
   requestedPriority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
   itPriority: string | null;
-  currentStatus: "NEW" | "IN_PROGRESS" | "PENDING" | "RESOLVED" | "CLOSED";
+  currentStatus: "NEW" | "OPEN" | "IN_PROGRESS" | "WAITING_FOR_REQUESTER" | "RESOLVED" | "CLOSED" | "REOPENED" | "CANCELLED";
   requesterId: number;
   categoryId: number;
   relatedSystemId: number;
   category: Category;
   relatedSystem: RelatedSystem;
-  requester?: RequesterUser;
+  requester?: AuthUser | RequesterUser;
+  assignedToId?: number | null;
+  assignedTo?: StaffAssignee | null;
+  resolveIndicatedAt?: string | null;
   attachments: Attachment[];
   attachmentCount?: number;
   createdAt: string;
@@ -78,6 +81,34 @@ export interface TicketListResponse {
     limit: number;
     totalPages: number;
   };
+}
+
+export interface StaffTicketFilters {
+  search?: string;
+  status?: string;
+  itPriority?: string;
+  categoryId?: number;
+  assignedToId?: number | null;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface StaffTicketListResponse {
+  tickets: Ticket[];
+  pagination: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
+export interface StaffAssignee {
+  id: number;
+  name: string;
+  role: string;
 }
 
 export interface SystemStatus {
@@ -242,3 +273,31 @@ export async function changePassword(newPassword: string, confirmPassword: strin
     throw new Error(errData.message || "Failed to change password");
   }
 }
+
+// --- IT Staff Endpoints ---
+
+export async function fetchStaffTickets(filters: StaffTicketFilters = {}): Promise<StaffTicketListResponse> {
+  const query = new URLSearchParams();
+  if (filters.search) query.set("search", filters.search);
+  if (filters.status) query.set("status", filters.status);
+  if (filters.itPriority) query.set("itPriority", filters.itPriority);
+  if (filters.categoryId) query.set("categoryId", String(filters.categoryId));
+  if (filters.assignedToId !== undefined && filters.assignedToId !== null) {
+    query.set("assignedToId", String(filters.assignedToId));
+  }
+  if (filters.sortBy) query.set("sortBy", filters.sortBy);
+  if (filters.sortOrder) query.set("sortOrder", filters.sortOrder);
+  if (filters.page) query.set("page", String(filters.page));
+  if (filters.pageSize) query.set("pageSize", String(filters.pageSize));
+
+  const res = await fetch(`${API_URL}/api/staff/tickets?${query.toString()}`, fetchOpts());
+  if (!res.ok) throw new Error("Failed to fetch staff tickets");
+  return res.json();
+}
+
+export async function fetchStaffAssignees(): Promise<{ assignees: StaffAssignee[] }> {
+  const res = await fetch(`${API_URL}/api/staff/assignees`, fetchOpts());
+  if (!res.ok) throw new Error("Failed to fetch staff assignees");
+  return res.json();
+}
+
