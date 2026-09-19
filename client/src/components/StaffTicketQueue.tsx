@@ -118,14 +118,26 @@ export function StaffTicketQueue({ onNavigate }: Props) {
   };
 
   const getPriorityClass = (priority: string | null) => {
-    if (!priority) return "zen-priority-low";
+    if (!priority) return "zen-badge-low";
     switch (priority) {
-      case "URGENT": return "zen-priority-urgent";
-      case "HIGH": return "zen-priority-high";
-      case "MEDIUM": return "zen-priority-medium";
+      case "URGENT": return "zen-badge-urgent";
+      case "HIGH": return "zen-badge-high";
+      case "MEDIUM": return "zen-badge-medium";
       case "LOW":
-      default: return "zen-priority-low";
+      default: return "zen-badge-low";
     }
+  };
+
+  const getStatusClass = (status: string) => {
+    const s = status.toUpperCase();
+    if (s === "IN_PROGRESS") return "zen-badge-inprogress";
+    return `zen-badge-${s.toLowerCase().replace(/_/g, '')}`;
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === "IN_PROGRESS") return "In Progress";
+    if (status === "WAITING_FOR_REQUESTER") return "Waiting for Requester";
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
   };
 
   return (
@@ -275,7 +287,7 @@ export function StaffTicketQueue({ onNavigate }: Props) {
                     <td>{t.category?.name}</td>
                     <td><span className={`zen-badge ${getPriorityClass(t.requestedPriority)}`}>{t.requestedPriority}</span></td>
                     <td><span className={`zen-badge ${getPriorityClass(t.itPriority)}`}>{t.itPriority || "-"}</span></td>
-                    <td><span className={`zen-badge zen-status-${t.currentStatus.toLowerCase()}`}>{t.currentStatus}</span></td>
+                    <td><span className={`zen-badge ${getStatusClass(t.currentStatus)}`}>{getStatusLabel(t.currentStatus)}</span></td>
                     <td>{t.assignedTo?.name || <span className="zen-meta">Unassigned</span>}</td>
                     <td className="zen-meta">{formatDate(t.updatedAt)}</td>
                     <td>
@@ -299,7 +311,7 @@ export function StaffTicketQueue({ onNavigate }: Props) {
               <div key={t.id} className="zen-mobile-card">
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                   <strong>{t.ticketNumber}</strong>
-                  <span className={`zen-badge zen-status-${t.currentStatus.toLowerCase()}`}>{t.currentStatus}</span>
+                  <span className={`zen-badge ${getStatusClass(t.currentStatus)}`}>{getStatusLabel(t.currentStatus)}</span>
                 </div>
                 <div style={{ marginBottom: "0.75rem", fontWeight: 500 }}>{t.summary}</div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem", fontSize: "0.85rem" }}>
