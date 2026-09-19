@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
-import { useRequester } from "./context/RequesterContext.js";
-import RequesterSelector from "./components/RequesterSelector.js";
+import { useAuth } from "./context/AuthContext.js";
+import Login from "./components/Login.js";
+import ChangePassword from "./components/ChangePassword.js";
 import Navbar from "./components/Navbar.js";
 import CreateTicketForm from "./components/CreateTicketForm.js";
 import MyTicketsDashboard from "./components/MyTicketsDashboard.js";
 import TicketDetailView from "./components/TicketDetailView.js";
 import { Category, RelatedSystem, fetchCategories, fetchRelatedSystems, checkSystem, SystemStatus } from "./api.js";
 
-type Page = "my-tickets" | "create-ticket" | "ticket-detail";
+type Page = "my-tickets" | "create-ticket" | "ticket-detail" | "staff-queue" | "admin-users";
 
 export default function App() {
-  const { selectedRequester } = useRequester();
+  const { user, isLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>("my-tickets");
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -24,17 +25,32 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!selectedRequester) {
-      setCurrentPage("my-tickets");
-      setSelectedTicketId(null);
+    if (user && currentPage !== "ticket-detail") {
+      if (user.role === "REQUESTER") setCurrentPage("my-tickets");
+      else if (user.role === "IT_STAFF") setCurrentPage("staff-queue");
+      else if (user.role === "ADMINISTRATOR") setCurrentPage("admin-users");
     }
-  }, [selectedRequester]);
+  }, [user]);
 
-  // AC-02: Guard — redirect to selector if no requester is selected
-  if (!selectedRequester) {
+  if (isLoading) {
+    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--color-bg-page)" }}>Loading...</div>;
+  }
+
+  // AC-02: Guard — redirect to Login if not authenticated
+  if (!user) {
     return (
       <>
-        <RequesterSelector />
+        <Login />
+        <Lab1SystemCheck />
+      </>
+    );
+  }
+
+  // BR-08: Force password change
+  if (user.mustChangePassword) {
+    return (
+      <>
+        <ChangePassword />
         <Lab1SystemCheck />
       </>
     );
@@ -52,7 +68,7 @@ export default function App() {
     setCurrentPage("ticket-detail");
   };
 
-  const handleNavigate = (page: "my-tickets" | "create-ticket") => {
+  const handleNavigate = (page: Page) => {
     setCurrentPage(page);
   };
 
@@ -87,8 +103,22 @@ export default function App() {
         {currentPage === "ticket-detail" && selectedTicketId && (
           <TicketDetailView 
             ticketId={selectedTicketId} 
-            onBack={() => setCurrentPage("my-tickets")} 
+            onBack={() => setCurrentPage(user.role === "REQUESTER" ? "my-tickets" : "staff-queue")} 
           />
+        )}
+
+        {currentPage === "staff-queue" && (
+          <div className="zen-card" style={{ padding: "2rem", textAlign: "center" }}>
+            <h2>IT Staff Queue</h2>
+            <p style={{ color: "var(--color-text-secondary)" }}>Not implemented in this sprint.</p>
+          </div>
+        )}
+
+        {currentPage === "admin-users" && (
+          <div className="zen-card" style={{ padding: "2rem", textAlign: "center" }}>
+            <h2>User Management</h2>
+            <p style={{ color: "var(--color-text-secondary)" }}>Not implemented in this sprint.</p>
+          </div>
         )}
 
       </div>

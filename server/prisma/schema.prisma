@@ -82,9 +82,9 @@ model Ticket {
   currentStatus      String         @default("NEW")
   resolveIndicatedAt DateTime?
 
-  // Lab 2 — original Requester FK (RequesterUser), preserved intact
-  requesterId        Int
-  requester          RequesterUser  @relation("LegacyRequesterTickets", fields: [requesterId], references: [id])
+  // Lab 2 — original Requester FK (RequesterUser), nullable in Lab 3 (new tickets use userId instead)
+  requesterId        Int?
+  requester          RequesterUser? @relation("LegacyRequesterTickets", fields: [requesterId], references: [id])
 
   // Lab 3 — authenticated User as Requester (nullable during migration phase)
   userId             Int?

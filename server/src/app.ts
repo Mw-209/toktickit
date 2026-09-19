@@ -268,8 +268,11 @@ app.get("/api/requesters", async (_req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 // POST /api/tickets: Create a new ticket (AC-01, BR-01, BR-02, BR-05, BR-06, BR-07)
+// Lab 3: requireAuth — session userId used as ticket owner
 app.post(
   "/api/tickets",
+  requireAuth,
+  requireRole("REQUESTER"),
   (req: Request, res: Response, next) => {
     upload.array("files", MAX_ACTIVE_ATTACHMENTS)(req, res, (err) => {
       if (err) {
@@ -305,8 +308,8 @@ app.post(
   async (req: Request, res: Response) => {
     try {
       const prisma = getPrisma();
+      const userId = req.user!.userId; // AC-03: always from session
       const {
-        requesterId,
         categoryId,
         relatedSystemId,
         requestedPriority = "MEDIUM",
@@ -316,15 +319,11 @@ app.post(
 
       const trimmedSummary = typeof summary === "string" ? summary.trim() : "";
       const trimmedDescription = typeof description === "string" ? description.trim() : "";
-      const reqId = parseInt(requesterId, 10);
       const catId = parseInt(categoryId, 10);
       const sysId = parseInt(relatedSystemId, 10);
 
       // Validation
       const errors: { field: string; issue: string }[] = [];
-      if (!reqId || isNaN(reqId)) {
-        errors.push({ field: "requesterId", issue: "Valid Development Requester is required." });
-      }
       if (!catId || isNaN(catId)) {
         errors.push({ field: "categoryId", issue: "Category selection is required." });
       }
@@ -352,28 +351,18 @@ app.post(
         });
       }
 
-      // Verify active requester exists
-      const requester = await prisma.requesterUser.findUnique({
-        where: { id: reqId },
-      });
-      if (!requester || !requester.isActive) {
-        return res.status(400).json({
-          error: { code: "INVALID_REQUESTER", message: "Selected Requester is inactive or does not exist." },
-        });
-      }
-
       const ticketNumber = await generateTicketNumber();
       const files = (req.files as Express.Multer.File[]) || [];
 
-      // Create Ticket with attachments in transaction
+      // Create Ticket — userId from session (AC-03)
       const ticket = await prisma.ticket.create({
         data: {
           ticketNumber,
           summary: trimmedSummary,
           description: trimmedDescription,
           requestedPriority,
-          currentStatus: "NEW", // BR-02
-          requesterId: reqId,
+          currentStatus: "NEW",
+          userId,
           categoryId: catId,
           relatedSystemId: sysId,
           attachments: {
@@ -389,7 +378,7 @@ app.post(
         include: {
           category: { select: { id: true, name: true } },
           relatedSystem: { select: { id: true, name: true } },
-          requester: { select: { id: true, name: true, email: true } },
+          user: { select: { id: true, name: true, email: true } },
           attachments: true,
         },
       });
@@ -402,16 +391,12 @@ app.post(
   }
 );
 
-// GET /api/tickets: Retrieve paginated ticket list for active requester (AC-03, FR-07, FR-08)
-app.get("/api/tickets", async (req: Request, res: Response) => {
+
+// GET /api/tickets: Retrieve paginated ticket list (AC-03) — uses session userId
+app.get("/api/tickets", requireAuth, requireRole("REQUESTER"), async (req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
-    const requesterId = parseInt(req.query.requesterId as string, 10);
-    if (!requesterId || isNaN(requesterId)) {
-      return res.status(400).json({
-        error: { code: "MISSING_REQUESTER", message: "Query parameter 'requesterId' is required." },
-      });
-    }
+    const userId = req.user!.userId; // AC-03: session identity, ignore any requesterId query param
 
     const {
       search,
@@ -428,8 +413,15 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
     const limitNum = Math.min(50, Math.max(1, parseInt(limit as string, 10) || 10));
     const skip = (pageNum - 1) * limitNum;
 
-    // Filters scoped strictly to current requester
-    const where: any = { requesterId };
+    // Support both Lab 3 new tickets (userId) and Lab 2 legacy tickets (matched by email)
+    const sessionUser = await prisma.user.findUnique({ where: { id: userId } });
+    const legacyRequester = sessionUser ? await prisma.requesterUser.findUnique({ where: { email: sessionUser.email } }) : null;
+
+    const baseCondition = legacyRequester 
+      ? { OR: [{ userId }, { requesterId: legacyRequester.id }] }
+      : { userId };
+
+    const where: any = { ...baseCondition };
 
     if (categoryId) {
       const catId = parseInt(categoryId as string, 10);
@@ -452,7 +444,6 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
       ];
     }
 
-    // Sort order
     const allowedSortFields = ["createdAt", "updatedAt", "ticketNumber"];
     const sortField = allowedSortFields.includes(sortBy as string) ? (sortBy as string) : "createdAt";
     const orderDirection = sortOrder === "asc" ? "asc" : "desc";
@@ -504,24 +495,25 @@ app.get("/api/tickets", async (req: Request, res: Response) => {
   }
 });
 
+
+
+
 // GET /api/tickets/:id: Get Ticket Detail with ownership protection (AC-03, AC-04, BR-04)
-app.get("/api/tickets/:id", async (req: Request, res: Response) => {
+app.get("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
     const ticketId = parseInt(req.params.id, 10);
-    const requesterId = parseInt(req.query.requesterId as string, 10);
+    const userId = req.user!.userId;
 
     if (!ticketId || isNaN(ticketId)) {
       return res.status(400).json({ error: { message: "Invalid ticket ID." } });
-    }
-    if (!requesterId || isNaN(requesterId)) {
-      return res.status(400).json({ error: { message: "Query parameter 'requesterId' is required." } });
     }
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
       include: {
         requester: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true, email: true } },
         category: { select: { id: true, name: true } },
         relatedSystem: { select: { id: true, name: true } },
         attachments: {
@@ -535,7 +527,11 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
     }
 
     // BR-04 / AC-04: Ownership Isolation
-    if (ticket.requesterId !== requesterId) {
+    const sessionUser = await prisma.user.findUnique({ where: { id: userId } });
+    const isLab3Owner = ticket.userId === userId;
+    const isLegacyOwner = !!(ticket.requesterId && sessionUser && ticket.requester?.email === sessionUser.email);
+
+    if (!isLab3Owner && !isLegacyOwner) {
       return res.status(403).json({
         error: {
           code: "FORBIDDEN",
@@ -558,6 +554,7 @@ app.get("/api/tickets/:id", async (req: Request, res: Response) => {
 // POST /api/tickets/:id/attachments: Upload new attachment to existing ticket (BR-08, BR-09, BR-10, AC-07)
 app.post(
   "/api/tickets/:id/attachments",
+  requireAuth,
   (req: Request, res: Response, next) => {
     upload.single("file")(req, res, (err) => {
       if (err) {
@@ -580,13 +577,10 @@ app.post(
     try {
       const prisma = getPrisma();
       const ticketId = parseInt(req.params.id, 10);
-      const requesterId = parseInt((req.query.requesterId || req.body.requesterId) as string, 10);
+      const userId = req.user!.userId;
 
       if (!ticketId || isNaN(ticketId)) {
         return res.status(400).json({ error: { message: "Invalid ticket ID." } });
-      }
-      if (!requesterId || isNaN(requesterId)) {
-        return res.status(400).json({ error: { message: "Requester ID is required." } });
       }
       if (!req.file) {
         return res.status(400).json({ error: { message: "File is required." } });
@@ -596,6 +590,7 @@ app.post(
       const ticket = await prisma.ticket.findUnique({
         where: { id: ticketId },
         include: {
+          requester: true, // Legacy
           attachments: { where: { isRemoved: false } },
         },
       });
@@ -603,7 +598,13 @@ app.post(
       if (!ticket) {
         return res.status(404).json({ error: { message: "Ticket not found." } });
       }
-      if (ticket.requesterId !== requesterId) {
+
+      const sessionUser = await prisma.user.findUnique({ where: { id: userId } });
+      const isLab3Owner = ticket.userId === userId;
+      const isLegacyOwner = !!(ticket.requesterId && sessionUser && ticket.requester?.email === sessionUser.email);
+      const isITStaff = sessionUser?.role === "IT_STAFF" || sessionUser?.role === "ADMINISTRATOR";
+
+      if (!isLab3Owner && !isLegacyOwner && !isITStaff) {
         return res.status(403).json({ error: { code: "FORBIDDEN", message: "Unauthorized ticket access." } });
       }
 
@@ -637,15 +638,15 @@ app.post(
 );
 
 // DELETE /api/tickets/:id/attachments/:attachmentId: Soft-remove an attachment (BR-11, BR-12, AC-08)
-app.delete("/api/tickets/:id/attachments/:attachmentId", async (req: Request, res: Response) => {
+app.delete("/api/tickets/:id/attachments/:attachmentId", requireAuth, async (req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
     const ticketId = parseInt(req.params.id, 10);
     const attachmentId = parseInt(req.params.attachmentId, 10);
-    const requesterId = parseInt((req.query.requesterId || req.body.requesterId) as string, 10);
+    const userId = req.user!.userId;
     const { removalReason } = req.body;
 
-    if (!ticketId || !attachmentId || !requesterId) {
+    if (!ticketId || !attachmentId) {
       return res.status(400).json({ error: { message: "Missing required parameters." } });
     }
 
@@ -660,9 +661,18 @@ app.delete("/api/tickets/:id/attachments/:attachmentId", async (req: Request, re
     }
 
     // Verify ticket and ownership
-    const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+    const ticket = await prisma.ticket.findUnique({ 
+      where: { id: ticketId },
+      include: { requester: true }
+    });
     if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
-    if (ticket.requesterId !== requesterId) {
+    
+    const sessionUser = await prisma.user.findUnique({ where: { id: userId } });
+    const isLab3Owner = ticket.userId === userId;
+    const isLegacyOwner = !!(ticket.requesterId && sessionUser && ticket.requester?.email === sessionUser.email);
+    const isITStaff = sessionUser?.role === "IT_STAFF" || sessionUser?.role === "ADMINISTRATOR";
+
+    if (!isLab3Owner && !isLegacyOwner && !isITStaff) {
       return res.status(403).json({ error: { code: "FORBIDDEN", message: "Unauthorized ticket access." } });
     }
 
@@ -689,24 +699,33 @@ app.delete("/api/tickets/:id/attachments/:attachmentId", async (req: Request, re
 });
 
 // GET /api/attachments/:id/download: Download active attachment (BR-12, AC-08)
-app.get("/api/attachments/:id/download", async (req: Request, res: Response) => {
+app.get("/api/attachments/:id/download", requireAuth, async (req: Request, res: Response) => {
   try {
     const prisma = getPrisma();
     const attachmentId = parseInt(req.params.id, 10);
-    const requesterId = parseInt(req.query.requesterId as string, 10);
+    const userId = req.user!.userId;
 
-    if (!attachmentId || !requesterId) {
+    if (!attachmentId) {
       return res.status(400).json({ error: { message: "Missing required parameters." } });
     }
 
     const attachment = await prisma.attachment.findUnique({
       where: { id: attachmentId },
-      include: { ticket: true },
+      include: { 
+        ticket: {
+          include: { requester: true }
+        } 
+      },
     });
 
     if (!attachment) return res.status(404).json({ error: { message: "Attachment not found." } });
 
-    if (attachment.ticket.requesterId !== requesterId) {
+    const sessionUser = await prisma.user.findUnique({ where: { id: userId } });
+    const isLab3Owner = attachment.ticket.userId === userId;
+    const isLegacyOwner = !!(attachment.ticket.requesterId && sessionUser && attachment.ticket.requester?.email === sessionUser.email);
+    const isITStaff = sessionUser?.role === "IT_STAFF" || sessionUser?.role === "ADMINISTRATOR";
+
+    if (!isLab3Owner && !isLegacyOwner && !isITStaff) {
       return res.status(403).json({ error: { code: "FORBIDDEN", message: "Unauthorized attachment access." } });
     }
 
@@ -730,6 +749,26 @@ app.get("/api/attachments/:id/download", async (req: Request, res: Response) => 
     console.error("Failed to download attachment:", error);
     return res.status(500).json({ error: { message: "Internal Server Error" } });
   }
+});
+
+// ---------------------------------------------------------------------------
+// 4. Stubs for Authorization Tests (Lab 3)
+// ---------------------------------------------------------------------------
+
+app.get("/api/staff/tickets", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), (req, res) => {
+  return res.status(501).json({ error: { message: "Not Implemented" } });
+});
+
+app.patch("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), (req, res) => {
+  return res.status(501).json({ error: { message: "Not Implemented" } });
+});
+
+app.get("/api/admin/users", requireAuth, requireRole("ADMINISTRATOR"), (req, res) => {
+  return res.status(501).json({ error: { message: "Not Implemented" } });
+});
+
+app.get("/api/tickets/:id/notes", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), (req, res) => {
+  return res.status(501).json({ error: { message: "Not Implemented" } });
 });
 
 export default app;

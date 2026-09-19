@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Ticket, Attachment, fetchTicketDetail, uploadAttachment, softRemoveAttachment, getAttachmentDownloadUrl } from "../api.js";
-import { useRequester } from "../context/RequesterContext.js";
 
 interface TicketDetailViewProps {
   ticketId: number;
@@ -8,7 +7,6 @@ interface TicketDetailViewProps {
 }
 
 export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewProps) {
-  const { selectedRequester } = useRequester();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,11 +23,10 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
   const [removeError, setRemoveError] = useState<string | null>(null);
 
   const loadTicket = async () => {
-    if (!selectedRequester) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchTicketDetail(ticketId, selectedRequester.id);
+      const data = await fetchTicketDetail(ticketId);
       setTicket(data);
     } catch (err: any) {
       setError(err.message || "Failed to load ticket details");
@@ -40,14 +37,14 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
 
   useEffect(() => {
     loadTicket();
-  }, [ticketId, selectedRequester]);
+  }, [ticketId]);
 
   const activeAttachments = ticket?.attachments.filter(a => !a.isRemoved) || [];
   const removedAttachments = ticket?.attachments.filter(a => a.isRemoved) || [];
   const canUpload = activeAttachments.length < 5;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0 || !selectedRequester) return;
+    if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     
     // Client-side validation
@@ -66,7 +63,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
     setUploading(true);
     setUploadError(null);
     try {
-      await uploadAttachment(ticketId, selectedRequester.id, file);
+      await uploadAttachment(ticketId, file);
       await loadTicket(); // reload to get new attachment
     } catch (err: any) {
       setUploadError(err.message || "Failed to upload file");
@@ -77,7 +74,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
   };
 
   const handleRemoveConfirm = async () => {
-    if (!removingAttachment || !selectedRequester) return;
+    if (!removingAttachment) return;
     if (removalReason.trim().length < 3) {
       setRemoveError("Removal reason must be at least 3 characters.");
       return;
@@ -86,7 +83,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
     setRemoving(true);
     setRemoveError(null);
     try {
-      await softRemoveAttachment(ticketId, removingAttachment.id, selectedRequester.id, removalReason);
+      await softRemoveAttachment(ticketId, removingAttachment.id, removalReason);
       setRemovingAttachment(null);
       setRemovalReason("");
       await loadTicket(); // reload to update attachment status
@@ -236,7 +233,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
               </div>
               <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
                 <a 
-                  href={getAttachmentDownloadUrl(a.id, selectedRequester?.id || 0)} 
+                  href={getAttachmentDownloadUrl(a.id)} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="btn-zen-secondary"
