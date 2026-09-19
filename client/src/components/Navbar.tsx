@@ -1,12 +1,12 @@
-import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 
 interface NavbarProps {
-  currentPage: "my-tickets" | "create-ticket" | "other";
-  onNavigate: (page: "my-tickets" | "create-ticket") => void;
+  currentPage: "my-tickets" | "create-ticket" | "staff-queue" | "admin-users" | "other";
+  onNavigate: (page: "my-tickets" | "create-ticket" | "staff-queue" | "admin-users") => void;
 }
 
 export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
-  const { selectedRequester, clearRequester } = useRequester();
+  const { user, logout } = useAuth();
 
   return (
     <header className="zen-header">
@@ -19,35 +19,72 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
         </div>
 
         {/* Navigation Links */}
-        <nav style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <button
-            id="nav-my-tickets"
-            className={`zen-nav-link ${currentPage === "my-tickets" ? "active" : ""}`}
-            onClick={() => onNavigate("my-tickets")}
-          >
-            📋 My Tickets
-          </button>
-          <button
-            id="nav-create-ticket"
-            className={`zen-nav-link ${currentPage === "create-ticket" ? "active" : ""}`}
-            onClick={() => onNavigate("create-ticket")}
-          >
-            ✏️ Create Ticket
-          </button>
-        </nav>
+        {user && !user.mustChangePassword && (
+          <nav style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            {(user.role === "REQUESTER" || user.role === "IT_STAFF") && (
+              <button
+                id="nav-my-tickets"
+                className={`zen-nav-link ${currentPage === "my-tickets" ? "active" : ""}`}
+                onClick={() => onNavigate("my-tickets")}
+              >
+                📋 My Tickets
+              </button>
+            )}
+            {user.role === "REQUESTER" && (
+              <button
+                id="nav-create-ticket"
+                className={`zen-nav-link ${currentPage === "create-ticket" ? "active" : ""}`}
+                onClick={() => onNavigate("create-ticket")}
+              >
+                ✏️ Create Ticket
+              </button>
+            )}
+            {user.role === "IT_STAFF" && (
+              <button
+                id="nav-staff-queue"
+                className={`zen-nav-link ${currentPage === "staff-queue" ? "active" : ""}`}
+                onClick={() => onNavigate("staff-queue")}
+              >
+                🧑‍💻 Ticket Queue
+              </button>
+            )}
+            {user.role === "ADMINISTRATOR" && (
+              <button
+                id="nav-admin-users"
+                className={`zen-nav-link ${currentPage === "admin-users" ? "active" : ""}`}
+                onClick={() => onNavigate("admin-users")}
+              >
+                ⚙️ User Management
+              </button>
+            )}
+          </nav>
+        )}
 
-        {/* Requester Profile Pill */}
-        {selectedRequester && (
-          <div className="zen-profile-pill">
+        {/* User Profile Pill */}
+        {user && (
+          <div className="zen-profile-pill" style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.3rem 0.6rem", background: "white", border: "1px solid var(--color-surface-border)", borderRadius: "2rem" }}>
             <span>👤</span>
-            <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>{selectedRequester.name}</span>
+            <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>{user.name}</span>
+            
+            <span style={{ 
+              fontSize: "0.7rem", 
+              fontWeight: 700, 
+              padding: "0.1rem 0.4rem", 
+              borderRadius: "1rem",
+              background: user.role === "REQUESTER" ? "#EFF6FF" : user.role === "IT_STAFF" ? "#FDF4FF" : "#FFF7ED",
+              color: user.role === "REQUESTER" ? "#1D4ED8" : user.role === "IT_STAFF" ? "#7E22CE" : "#C2410C"
+            }}>
+              {user.role}
+            </span>
+
             <button
-              id="btn-change-requester"
+              id="btn-logout"
               className="zen-change-btn"
-              onClick={clearRequester}
-              title="Switch Development Requester"
+              onClick={logout}
+              title="Logout"
+              style={{ marginLeft: "0.25rem", color: "var(--color-error)", cursor: "pointer", background: "none", border: "none", fontSize: "0.8rem", fontWeight: 600 }}
             >
-              Switch
+              Logout
             </button>
           </div>
         )}
