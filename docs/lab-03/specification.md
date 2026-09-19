@@ -273,7 +273,7 @@ JWT signed with `JWT_SECRET` (env var), stored as `httpOnly; SameSite=Lax` cooki
 - [ ] All Lab 2 Requester functions work without the Development Requester selector.
 - [ ] IT Staff Ticket Queue with search, filter, sort, and pagination works correctly.
 - [ ] IT Staff Ticket Detail with claim, IT Priority, status transition, comments, and notes works correctly.
-- [ ] Administrator User Management with all CRUD operations and safety rules works correctly.
+- [ ] Administrator User Management with create, view, edit, activate/deactivate operations and safety rules works correctly. (Note: user deletion is explicitly excluded from Lab 3 scope — see Section 3.2)
 - [ ] Direct API authorization tests demonstrate server-side enforcement (not just UI hiding).
 - [ ] All screens are responsive across desktop, tablet, and mobile.
 - [ ] All screens follow the Zen Green design language.
