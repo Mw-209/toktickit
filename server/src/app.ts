@@ -1023,16 +1023,16 @@ app.post("/api/tickets/:id/comments", requireAuth, async (req: Request, res: Res
     const comment = await prisma.publicComment.create({
       data: { 
         ticket: { connect: { id: ticketId } }, 
-        author: { connect: { id: sessionUser.id } }, 
+        author: { connect: { id: sessionUser.userId } }, 
         content 
       },
       include: { author: { select: { id: true, name: true, role: true } } },
     });
 
     return res.status(201).json(comment);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to create comment:", error);
-    return res.status(500).json({ error: { message: "Internal Server Error" } });
+    return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
   }
 });
 
@@ -1076,16 +1076,16 @@ app.post("/api/tickets/:id/notes", requireAuth, requireRole("IT_STAFF", "ADMINIS
     const note = await prisma.internalNote.create({
       data: { 
         ticket: { connect: { id: ticketId } }, 
-        author: { connect: { id: sessionUser.id } }, 
+        author: { connect: { id: sessionUser.userId } }, 
         content 
       },
       include: { author: { select: { id: true, name: true, role: true } } },
     });
 
     return res.status(201).json(note);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to create note:", error);
-    return res.status(500).json({ error: { message: "Internal Server Error" } });
+    return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
   }
 });
 
