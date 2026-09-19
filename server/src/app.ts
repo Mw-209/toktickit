@@ -1,15 +1,60 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
+import cookieParser from "cookie-parser";
 import { getPrisma } from "./prisma.js";
+import { hashPassword, verifyPassword, generateToken, verifyToken } from "./auth.js";
+
+// ---------------------------------------------------------------------------
+// Lab 3 Auth Types — extend Express Request
+// ---------------------------------------------------------------------------
+declare global {
+  namespace Express {
+    interface Request {
+      user?: { userId: number; role: string };
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Lab 3 Auth Middleware
+// ---------------------------------------------------------------------------
+
+/** requireAuth: verifies JWT cookie; sets req.user; returns 401 if missing/invalid */
+export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  const token = req.cookies?.token;
+  if (!token) {
+    res.status(401).json({ error: "UNAUTHORIZED", message: "Authentication required." });
+    return;
+  }
+  const payload = verifyToken(token);
+  if (!payload) {
+    res.status(401).json({ error: "UNAUTHORIZED", message: "Invalid or expired session. Please log in again." });
+    return;
+  }
+  req.user = payload;
+  next();
+}
+
+/** requireRole: must be used after requireAuth; returns 403 if role not permitted */
+export function requireRole(...roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      res.status(403).json({ error: "FORBIDDEN", message: "You do not have permission to perform this action." });
+      return;
+    }
+    next();
+  };
+}
 
 export const app = express();
 
-app.use(cors());
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Ensure upload directory exists
 const UPLOAD_DIR = path.resolve(process.cwd(), "uploads", "attachments");
@@ -73,6 +118,97 @@ async function generateTicketNumber(): Promise<string> {
   const paddedSeq = String(nextSeq).padStart(6, "0");
   return `${yearPrefix}${paddedSeq}`;
 }
+
+// ---------------------------------------------------------------------------
+// Lab 3 — Auth Endpoints
+// ---------------------------------------------------------------------------
+
+// POST /api/auth/login — BR-01, AC-01, AC-13
+app.post("/api/auth/login", async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "MISSING_FIELDS", message: "Email and password are required." });
+    }
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({ where: { email: String(email).trim().toLowerCase() } });
+    // BR-01: Generic error — do not expose whether account exists or is inactive
+    if (!user || !user.isActive) {
+      return res.status(401).json({ error: "INVALID_CREDENTIALS", message: "Invalid credentials or inactive account." });
+    }
+    const valid = await verifyPassword(String(password), user.passwordHash);
+    if (!valid) {
+      return res.status(401).json({ error: "INVALID_CREDENTIALS", message: "Invalid credentials or inactive account." });
+    }
+    const token = generateToken(user.id, user.role);
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 24 h
+      path: "/",
+    });
+    return res.status(200).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      mustChangePassword: user.mustChangePassword,
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return res.status(500).json({ error: "SERVER_ERROR", message: "Internal Server Error" });
+  }
+});
+
+// POST /api/auth/logout — BR-22
+app.post("/api/auth/logout", (_req: Request, res: Response) => {
+  res.clearCookie("token", { path: "/" });
+  return res.status(200).json({ message: "Logged out successfully" });
+});
+
+// GET /api/auth/me — AC-10
+app.get("/api/auth/me", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { id: true, name: true, email: true, role: true, mustChangePassword: true },
+    });
+    if (!user) {
+      return res.status(401).json({ error: "UNAUTHORIZED", message: "Session user not found." });
+    }
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error("GET /me error:", error);
+    return res.status(500).json({ error: "SERVER_ERROR", message: "Internal Server Error" });
+  }
+});
+
+// POST /api/auth/change-password — BR-02, BR-08, AC-02
+app.post("/api/auth/change-password", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { newPassword, confirmPassword } = req.body;
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({ error: "MISSING_FIELDS", message: "newPassword and confirmPassword are required." });
+    }
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({ error: "PASSWORD_TOO_SHORT", message: "Password must be at least 8 characters." });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: "PASSWORD_MISMATCH", message: "Passwords do not match." });
+    }
+    const prisma = getPrisma();
+    const passwordHash = await hashPassword(String(newPassword));
+    await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: { passwordHash, mustChangePassword: false },
+    });
+    return res.status(200).json({ message: "Password changed successfully." });
+  } catch (error) {
+    console.error("Change password error:", error);
+    return res.status(500).json({ error: "SERVER_ERROR", message: "Internal Server Error" });
+  }
+});
 
 // ---------------------------------------------------------------------------
 // 1. Health & Reference Data Endpoints

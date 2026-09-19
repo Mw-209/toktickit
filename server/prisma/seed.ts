@@ -1,7 +1,9 @@
 import { getPrisma } from "../src/prisma.js";
+import { hashPassword } from "../src/auth.js";
 
-// Lab 2 Idempotent Database Seed Script
-// Fulfills Section 5.3 of Lab_02_labsheet.pdf:
+// Lab 2 + Lab 3 Idempotent Database Seed Script
+// Lab 2: Fulfills Section 5.3 of Lab_02_labsheet.pdf:
+// Lab 3: Adds User accounts for real authentication
 // - 4 Ticket Categories
 // - At least 6 Related Systems (we provide 7)
 // - At least 4 Active Development Requesters
@@ -217,6 +219,40 @@ async function main() {
     seeded++;
   }
   console.log(`✓ Seeded ${seeded} sample tickets with varied statuses (NEW, IN_PROGRESS, RESOLVED, CLOSED).`);
+
+  // ---------------------------------------------------------------------------
+  // Lab 3: Seed User accounts for real authentication
+  // ---------------------------------------------------------------------------
+
+  // Default initial password for all seeded users (must change on first login)
+  const initialPassword = "Password123!";
+  const initialHash = await hashPassword(initialPassword);
+
+  const users = [
+    // Requesters — match Lab 2 RequesterUser names/emails
+    { name: "Jennifer Anderson", email: "jennifer.anderson@example.edu", role: "REQUESTER" as const, isActive: true, mustChangePassword: false },
+    { name: "David Lee",         email: "david.lee@example.edu",          role: "REQUESTER" as const, isActive: true, mustChangePassword: false },
+    { name: "Sarah Johnson",     email: "sarah.johnson@example.edu",      role: "REQUESTER" as const, isActive: true, mustChangePassword: false },
+    { name: "Michael Brown",     email: "michael.brown@example.edu",      role: "REQUESTER" as const, isActive: true, mustChangePassword: false },
+    { name: "Alex Turner",       email: "alex.turner@example.edu",        role: "REQUESTER" as const, isActive: false, mustChangePassword: false },
+    // IT Staff
+    { name: "Alice Staff",       email: "alice.staff@example.edu",        role: "IT_STAFF" as const,  isActive: true, mustChangePassword: false },
+    { name: "Bob Technician",    email: "bob.tech@example.edu",           role: "IT_STAFF" as const,  isActive: true, mustChangePassword: false },
+    { name: "Carol Support",     email: "carol.support@example.edu",      role: "IT_STAFF" as const,  isActive: true, mustChangePassword: false },
+    { name: "Dan IT (Inactive)", email: "dan.inactive@example.edu",       role: "IT_STAFF" as const,  isActive: false, mustChangePassword: false },
+    // Administrator
+    { name: "Admin User",        email: "admin@example.edu",              role: "ADMINISTRATOR" as const, isActive: true, mustChangePassword: false },
+  ];
+
+  for (const u of users) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: { name: u.name, role: u.role, isActive: u.isActive },
+      create: { ...u, passwordHash: initialHash },
+    });
+  }
+  console.log(`✓ Seeded ${users.length} Lab 3 Users (Requesters, IT Staff, Admin).`);
+  console.log(`  Default password for all seeded users: "${initialPassword}" (must change on first login)`);
 }
 
 main()
