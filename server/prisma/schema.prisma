@@ -11,7 +11,41 @@ datasource db {
 }
 
 // ---------------------------------------------------------------------------
-// Lab 2 Data Models — TokTickIT Requester Ticketing MVP
+// Lab 3 Role Enum
+// ---------------------------------------------------------------------------
+
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMINISTRATOR
+}
+
+// ---------------------------------------------------------------------------
+// Lab 3 User Model (real authentication — replaces Dev Requester selector)
+// ---------------------------------------------------------------------------
+
+model User {
+  id                 Int             @id @default(autoincrement())
+  name               String
+  email              String          @unique
+  passwordHash       String
+  role               Role            @default(REQUESTER)
+  isActive           Boolean         @default(true)
+  mustChangePassword Boolean         @default(false)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  tickets            Ticket[]        @relation("RequesterTickets")
+  assignedTickets    Ticket[]        @relation("AssignedTickets")
+  publicComments     PublicComment[]
+  internalNotes      InternalNote[]
+
+  @@index([email])
+  @@index([role, isActive])
+}
+
+// ---------------------------------------------------------------------------
+// Lab 2 Data Models — preserved intact, FK on Ticket updated additively
 // ---------------------------------------------------------------------------
 
 model RequesterUser {
@@ -20,7 +54,7 @@ model RequesterUser {
   email     String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-  tickets   Ticket[]
+  tickets   Ticket[] @relation("LegacyRequesterTickets")
 }
 
 model Category {
@@ -39,24 +73,43 @@ model RelatedSystem {
 }
 
 model Ticket {
-  id                Int           @id @default(autoincrement())
-  ticketNumber      String        @unique
-  summary           String
-  description       String
-  requestedPriority String        @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
-  itPriority        String?       // Optional IT staff priority (for future labs)
-  currentStatus     String        @default("NEW")    // NEW, IN_PROGRESS, RESOLVED, CLOSED
-  requesterId       Int
-  requester         RequesterUser @relation(fields: [requesterId], references: [id])
-  categoryId        Int
-  category          Category      @relation(fields: [categoryId], references: [id])
-  relatedSystemId   Int
-  relatedSystem     RelatedSystem @relation(fields: [relatedSystemId], references: [id])
-  attachments       Attachment[]
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                 Int            @id @default(autoincrement())
+  ticketNumber       String         @unique
+  summary            String
+  description        String
+  requestedPriority  String         @default("MEDIUM")
+  itPriority         String?
+  currentStatus      String         @default("NEW")
+  resolveIndicatedAt DateTime?
+
+  // Lab 2 — original Requester FK (RequesterUser), preserved intact
+  requesterId        Int
+  requester          RequesterUser  @relation("LegacyRequesterTickets", fields: [requesterId], references: [id])
+
+  // Lab 3 — authenticated User as Requester (nullable during migration phase)
+  userId             Int?
+  user               User?          @relation("RequesterTickets", fields: [userId], references: [id])
+
+  // Lab 3 — IT Staff assignee (optional)
+  assignedToId       Int?
+  assignedTo         User?          @relation("AssignedTickets", fields: [assignedToId], references: [id])
+
+  categoryId         Int
+  category           Category       @relation(fields: [categoryId], references: [id])
+  relatedSystemId    Int
+  relatedSystem      RelatedSystem  @relation(fields: [relatedSystemId], references: [id])
+
+  attachments        Attachment[]
+  publicComments     PublicComment[]
+  internalNotes      InternalNote[]
+
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   @@index([requesterId, createdAt])
+  @@index([userId, createdAt])
+  @@index([assignedToId, currentStatus])
+  @@index([currentStatus])
 }
 
 model Attachment {
@@ -73,4 +126,32 @@ model Attachment {
   createdAt     DateTime  @default(now())
 
   @@index([ticketId, isRemoved])
+}
+
+// ---------------------------------------------------------------------------
+// Lab 3: Public Comments & Internal Notes
+// ---------------------------------------------------------------------------
+
+model PublicComment {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+model InternalNote {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
 }
