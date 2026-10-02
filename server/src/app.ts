@@ -1258,6 +1258,9 @@ app.patch("/api/admin/users/:id", requireAuth, requireRole("ADMINISTRATOR"), asy
     }
 
     if (isActive !== undefined) {
+      if (req.user && req.user.userId === userIdToEdit && isActive === false) {
+        return res.status(400).json({ error: { message: "Cannot deactivate your own account" } });
+      }
       data.isActive = Boolean(isActive);
     }
 

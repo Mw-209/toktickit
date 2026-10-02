@@ -175,7 +175,7 @@ describe("POST /api/auth/logout", () => {
     const tokenClear = (Array.isArray(clearCookies) ? clearCookies : [clearCookies]).find(
       (c: string) => c.startsWith("token=")
     );
-    expect(tokenClear).toContain("Max-Age=0");
+    expect(tokenClear).toContain("Expires=Thu, 01 Jan 1970 00:00:00 GMT");
   });
 });
 
