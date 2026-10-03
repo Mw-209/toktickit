@@ -7,16 +7,13 @@
 
 | Prompt Order | Goal / Intent | AI Output Quality / Issues | Student Action / Refinement |
 |---|---|---|---|
-| 1 | Read Lab_3_sheet.pdf and create Lab 3 implementation plan | Extracted all 18 pages, identified 8 issues and full scope | Approved the plan and issue breakdown |
-| 2 | Create Issue 1: Sprint 3 Engineering Contract (specification.md) | Generated complete spec with FR, BR, AC, and DoD aligned to lab sheet | Reviewed and approved |
-| 3 | Create ui-spec.md with all Lab 3 screens | Generated screen layouts, badge colors, responsive rules | Reviewed against lab sheet requirements |
-| 4 | Create api-spec.md with authorization matrix | Generated all endpoints with request/response shapes | Verified authorization matrix coverage |
-| 5 | Create tests.md with full test plan | Generated 60+ planned tests with AC traceability | Verified all AC mapped to at least one test |
-| 6 | Create feature/lab3-2-auth-foundation and UI | Generated login/password change backend logic and React UI components | Reviewed backend code, tested frontend visually |
-| 7 | Create authorization matrix middleware (Issue 3) | Implemented Role-Based Access Control logic in app.ts | Verified requester could only see own tickets |
-| 8 | Implement Staff Queue and Detail views (Issue 4,5) | Generated API endpoints and frontend components for Staff flows | Tested status transition constraints |
-| 9 | Implement Admin User Management (Issue 6) | Generated CRUD APIs for users and management UI with status badges | Found logic bug where admin could deactivate self, asked AI to fix it |
-| 10 | Complete E2E Tests and API tests (Issue 7) | Generated Playwright E2E tests, missing API and UI tests | Fixed API payload shape issues where tests failed, organized screenshots |
+| 1 | Plan Lab 3 scope (Issue 1): identify all 8 issues, define Sprint Engineering Contract, create specification.md | AI read the lab sheet, identified 8 issues with scope, acceptance criteria, and DoD for each | Reviewed issue breakdown, confirmed all 18 lab sheet requirements were covered |
+| 2 | Implement authentication foundation (Issue 2): JWT login, mustChangePassword flow, password change API and React UI | Generated full auth backend with bcrypt, JWT, session middleware + React login/change-password pages | Tested mustChangePassword redirect flow; verified token is cleared on logout |
+| 3 | Implement RBAC authorization middleware (Issue 3): block routes by role, prevent cross-user data access | Generated route-level middleware checking roles; Requester can only see own tickets | Manually verified a Requester JWT could not access Staff or Admin endpoints |
+| 4 | Implement Staff Ticket Queue & Detail (Issue 4,5): paginated ticket list with search/filter, status transitions, comments and internal notes | Generated GET /api/staff/tickets with query params, PATCH for status, POST for comments/notes; StaffTicketQueue and StaffTicketDetail React components | Found status transition constraints were not enforced on the frontend; asked AI to add validation |
+| 5 | Implement Admin User Management (Issue 6): create/edit/deactivate users, set temporary password | Generated full CRUD API at /api/admin/users and React admin UI with modal dialogs | Discovered AI allowed admin to deactivate their own account; provided constraint, AI fixed the logic |
+| 6 | Complete E2E and unit tests (Issue 7): 16 Playwright E2E tests + 64 server API tests + 9 client UI tests | Generated all test files; some tests failed due to wrong response payload shape | Debugged API test assertions, fixed selector mismatches in E2E, reorganized screenshot paths |
+| 7 | Add responsive E2E screenshots (Issue 8): capture all screens in Desktop, Tablet, Mobile viewport | Added 3 Playwright projects; restructured screenshot folders by screen area | Tablet used WebKit (not installed) → changed to Chromium 1024px; Mobile View button hidden by overflow CSS → used JS force-click |
 
 ## 3. My Reflection
 
