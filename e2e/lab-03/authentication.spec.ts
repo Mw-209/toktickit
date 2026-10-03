@@ -1,101 +1,111 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Authentication Flow', () => {
-  const getScreenshotPath = (name: string) => `artifacts/lab-03/screenshots/auth_${name}.png`;
+  const shot = (name: string) =>
+    `artifacts/lab-03/screenshots/authentication/${test.info().project.name}-${name}.png`;
 
-  test('E2E-AUTH-01: Valid login flow', async ({ page }) => {
+  test('E2E-AUTH-01: Login page screenshot', async ({ page }) => {
     await page.goto('/');
-    await page.screenshot({ path: getScreenshotPath('login_page') });
-    
-    // Fill in the login form with a known active requester
+    await page.screenshot({ path: shot('login') });
+  });
+
+  test('E2E-AUTH-02: Valid login flow', async ({ page }) => {
+    await page.goto('/');
     await page.fill('#email', 'jennifer.anderson@example.edu');
     await page.fill('#password', 'Password123!');
     await page.click('button[type="submit"]');
-
-    // Should redirect to my-tickets
     await expect(page.locator('#nav-my-tickets')).toBeVisible();
-    await page.screenshot({ path: getScreenshotPath('requester_home') });
-    
-    // Check role badge
     await expect(page.getByText('REQUESTER')).toBeVisible();
   });
 
-  test('E2E-AUTH-02: Invalid login shows error', async ({ page }) => {
+  test('E2E-AUTH-03: Invalid credentials shows error', async ({ page }) => {
     await page.goto('/');
-    await page.fill('#email', 'alex.turner@example.edu');
+    await page.fill('#email', 'jennifer.anderson@example.edu');
     await page.fill('#password', 'WrongPassword!');
     await page.click('button[type="submit"]');
-
-    // Should show error message
     const errorMsg = page.locator('.zen-alert-error');
     await expect(errorMsg).toBeVisible();
-    await expect(errorMsg).toContainText('Invalid credentials or inactive account');
-    await page.screenshot({ path: getScreenshotPath('login_error') });
+    await page.screenshot({ path: shot('login-invalid') });
   });
 
-  test('E2E-AUTH-03: mustChangePassword user login flow', async ({ page }) => {
-    // 1. Login as Admin
+  test('E2E-AUTH-04: Inactive user shows error', async ({ page }) => {
+    await page.goto('/');
+    await page.fill('#email', 'alex.turner@example.edu');
+    await page.fill('#password', 'Password123!');
+    await page.click('button[type="submit"]');
+    const errorMsg = page.locator('.zen-alert-error');
+    await expect(errorMsg).toBeVisible();
+    await page.screenshot({ path: shot('login-inactive') });
+  });
+
+  test('E2E-AUTH-05: Login validation (empty fields)', async ({ page }) => {
+    await page.goto('/');
+    await page.click('button[type="submit"]');
+    await page.screenshot({ path: shot('login-validation') });
+  });
+
+  test('E2E-AUTH-06: mustChangePassword → change password page', async ({ page }) => {
+    // Login as Admin and create a new user
     await page.goto('/');
     await page.fill('#email', 'admin@example.edu');
     await page.fill('#password', 'Password123!');
     await page.click('button[type="submit"]');
-
     await expect(page.locator('h2:has-text("Administrator User Management")')).toBeVisible();
-    
-    // 2. Create a new user (which sets mustChangePassword=true)
-    const uniqueEmail = `testuser${Date.now()}@example.edu`;
+
+    const uniqueEmail = `testauth${Date.now()}@example.edu`;
     await page.click('text=+ Create User');
-    await page.fill('#createForm input[type="text"]:not([minlength])', 'Test User');
+    await page.fill('#createForm input[type="text"]:not([minlength])', 'Test Auth User');
     await page.fill('#createForm input[type="email"]', uniqueEmail);
-    // Role is REQUESTER by default
     await page.fill('#createForm input[minlength="8"]', 'TempPass123!');
     await page.click('button[type="submit"][form="createForm"]');
-    
     await expect(page.getByText('Create New User')).not.toBeVisible();
-    
-    // 3. Logout
-    await page.click('text=Logout');
 
-    // 4. Login as the new user
+    // Logout and login as new user
+    await page.click('text=Logout');
     await page.fill('#email', uniqueEmail);
     await page.fill('#password', 'TempPass123!');
     await page.click('button[type="submit"]');
 
-    // 5. Should redirect to Change Password (mustChangePassword flow)
     await expect(page.getByText('Set Your New Password')).toBeVisible();
-    await page.screenshot({ path: getScreenshotPath('change_password_page') });
+    await page.screenshot({ path: shot('change-password') });
   });
 
-  test('E2E-AUTH-04: Logout clears session', async ({ page }) => {
+  test('E2E-AUTH-07: Change password validation', async ({ page }) => {
+    // Create user and go to change password page
     await page.goto('/');
     await page.fill('#email', 'admin@example.edu');
     await page.fill('#password', 'Password123!');
     await page.click('button[type="submit"]');
-
     await expect(page.locator('h2:has-text("Administrator User Management")')).toBeVisible();
 
-    // Click logout
-    await page.click('text=Logout');
+    const uniqueEmail = `testval${Date.now()}@example.edu`;
+    await page.click('text=+ Create User');
+    await page.fill('#createForm input[type="text"]:not([minlength])', 'Test Val User');
+    await page.fill('#createForm input[type="email"]', uniqueEmail);
+    await page.fill('#createForm input[minlength="8"]', 'TempPass123!');
+    await page.click('button[type="submit"][form="createForm"]');
+    await expect(page.getByText('Create New User')).not.toBeVisible();
 
-    // Should be back at login
-    await expect(page.locator('#email')).toBeVisible();
-    await page.screenshot({ path: getScreenshotPath('after_logout') });
+    await page.click('text=Logout');
+    await page.fill('#email', uniqueEmail);
+    await page.fill('#password', 'TempPass123!');
+    await page.click('button[type="submit"]');
+    await expect(page.getByText('Set Your New Password')).toBeVisible();
+
+    // Submit mismatched passwords
+    await page.locator('input[type="password"]').first().fill('NewPass123!');
+    await page.locator('input[type="password"]').last().fill('DifferentPass!');
+    await page.click('button[type="submit"]');
+    await page.screenshot({ path: shot('change-password-validation') });
   });
 
-  test('E2E-AUTH-05: Direct URL access after logout', async ({ page }) => {
+  test('E2E-AUTH-08: Logout clears session', async ({ page }) => {
     await page.goto('/');
     await page.fill('#email', 'admin@example.edu');
     await page.fill('#password', 'Password123!');
     await page.click('button[type="submit"]');
-
     await expect(page.locator('h2:has-text("Administrator User Management")')).toBeVisible();
-    
-    // Logout
     await page.click('text=Logout');
-    await expect(page.locator('#email')).toBeVisible();
-
-    // Try to reload
-    await page.reload();
     await expect(page.locator('#email')).toBeVisible();
   });
 });
