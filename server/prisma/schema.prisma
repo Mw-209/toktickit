@@ -1,6 +1,3 @@
-// Prisma schema — datasource and generator are pre-wired.
-// Your DATABASE_URL lives in server/.env (copy it from .env.example).
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,20 +6,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// ---------------------------------------------------------------------------
-// Lab 3 Role Enum
-// ---------------------------------------------------------------------------
-
-enum Role {
-  REQUESTER
-  IT_STAFF
-  ADMINISTRATOR
-}
-
-// ---------------------------------------------------------------------------
-// Lab 3 User Model (real authentication — replaces Dev Requester selector)
-// ---------------------------------------------------------------------------
 
 model User {
   id                 Int             @id @default(autoincrement())
@@ -34,19 +17,14 @@ model User {
   mustChangePassword Boolean         @default(false)
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
-
-  tickets            Ticket[]        @relation("RequesterTickets")
-  assignedTickets    Ticket[]        @relation("AssignedTickets")
-  publicComments     PublicComment[]
   internalNotes      InternalNote[]
+  publicComments     PublicComment[]
+  assignedTickets    Ticket[]        @relation("AssignedTickets")
+  tickets            Ticket[]        @relation("RequesterTickets")
 
   @@index([email])
   @@index([role, isActive])
 }
-
-// ---------------------------------------------------------------------------
-// Lab 2 Data Models — preserved intact, FK on Ticket updated additively
-// ---------------------------------------------------------------------------
 
 model RequesterUser {
   id        Int      @id @default(autoincrement())
@@ -73,38 +51,29 @@ model RelatedSystem {
 }
 
 model Ticket {
-  id                 Int            @id @default(autoincrement())
-  ticketNumber       String         @unique
+  id                 Int             @id @default(autoincrement())
+  ticketNumber       String          @unique
   summary            String
   description        String
-  requestedPriority  String         @default("MEDIUM")
+  requestedPriority  String          @default("MEDIUM")
   itPriority         String?
-  currentStatus      String         @default("NEW")
-  resolveIndicatedAt DateTime?
-
-  // Lab 2 — original Requester FK (RequesterUser), nullable in Lab 3 (new tickets use userId instead)
+  currentStatus      String          @default("NEW")
   requesterId        Int?
-  requester          RequesterUser? @relation("LegacyRequesterTickets", fields: [requesterId], references: [id])
-
-  // Lab 3 — authenticated User as Requester (nullable during migration phase)
-  userId             Int?
-  user               User?          @relation("RequesterTickets", fields: [userId], references: [id])
-
-  // Lab 3 — IT Staff assignee (optional)
-  assignedToId       Int?
-  assignedTo         User?          @relation("AssignedTickets", fields: [assignedToId], references: [id])
-
   categoryId         Int
-  category           Category       @relation(fields: [categoryId], references: [id])
   relatedSystemId    Int
-  relatedSystem      RelatedSystem  @relation(fields: [relatedSystemId], references: [id])
-
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  userId             Int?
+  assignedToId       Int?
+  resolveIndicatedAt DateTime?
   attachments        Attachment[]
-  publicComments     PublicComment[]
   internalNotes      InternalNote[]
-
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  publicComments     PublicComment[]
+  assignedTo         User?           @relation("AssignedTickets", fields: [assignedToId], references: [id])
+  category           Category        @relation(fields: [categoryId], references: [id])
+  relatedSystem      RelatedSystem   @relation(fields: [relatedSystemId], references: [id])
+  requester          RequesterUser?  @relation("LegacyRequesterTickets", fields: [requesterId], references: [id], onDelete: Restrict)
+  user               User?           @relation("RequesterTickets", fields: [userId], references: [id])
 
   @@index([requesterId, createdAt])
   @@index([userId, createdAt])
@@ -115,7 +84,6 @@ model Ticket {
 model Attachment {
   id            Int       @id @default(autoincrement())
   ticketId      Int
-  ticket        Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   originalName  String
   storedName    String
   mimeType      String
@@ -124,22 +92,19 @@ model Attachment {
   removedAt     DateTime?
   removalReason String?
   createdAt     DateTime  @default(now())
+  ticket        Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId, isRemoved])
 }
 
-// ---------------------------------------------------------------------------
-// Lab 3: Public Comments & Internal Notes
-// ---------------------------------------------------------------------------
-
 model PublicComment {
   id        Int      @id @default(autoincrement())
   ticketId  Int
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   authorId  Int
-  author    User     @relation(fields: [authorId], references: [id])
   content   String
   createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id])
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId, createdAt])
 }
@@ -147,11 +112,17 @@ model PublicComment {
 model InternalNote {
   id        Int      @id @default(autoincrement())
   ticketId  Int
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   authorId  Int
-  author    User     @relation(fields: [authorId], references: [id])
   content   String
   createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id])
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId, createdAt])
+}
+
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMINISTRATOR
 }
