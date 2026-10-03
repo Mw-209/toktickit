@@ -29,12 +29,15 @@ toktickit/
 ├── client/               # React + TypeScript + Vite frontend
 ├── server/               # Node.js + Express + Prisma backend
 ├── e2e/                  # Playwright End-to-End tests
-│   └── lab-02/
+│   ├── lab-02/
+│   └── lab-03/
 ├── docs/                 # Lab documentation and peer review records
 │   ├── lab-01/
-│   └── lab-02/
+│   ├── lab-02/
+│   └── lab-03/
 ├── artifacts/            # Screenshots from E2E tests
-│   └── lab-02/screenshots/
+│   ├── lab-02/screenshots/
+│   └── lab-03/screenshots/
 ├── .gitignore            # Git ignore configuration
 ├── playwright.config.ts  # Playwright configuration
 └── README.md             # Project setup and documentation
@@ -125,4 +128,4 @@ VITE_API_URL="http://localhost:3000"
   ```bash
   npx playwright test
   ```
-  Screenshots will be saved to `artifacts/lab-02/screenshots/`.
+  Screenshots will be saved to `artifacts/lab-02/screenshots/` and `artifacts/lab-03/screenshots/`.

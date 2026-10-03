@@ -249,6 +249,35 @@ body {
   font-weight: 500;
 }
 
+/* Alerts (Success, Warning, Error) */
+.zen-alert-error,
+.zen-alert-success,
+.zen-alert-warning {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-left: 4px solid transparent;
+}
+
+.zen-alert-error {
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  border-left-color: var(--color-error);
+}
+
+.zen-alert-success {
+  background-color: var(--color-pale-green);
+  color: var(--color-success);
+  border-left-color: var(--color-success);
+}
+
+.zen-alert-warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+  border-left-color: var(--color-warning);
+}
+
 /* Badges (Section 7, 8.4) */
 .zen-badge {
   display: inline-block;

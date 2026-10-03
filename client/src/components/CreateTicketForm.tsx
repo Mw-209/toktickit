@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 import { Category, RelatedSystem, createTicket } from "../api.js";
 
 interface CreateTicketFormProps {
@@ -21,7 +21,7 @@ interface PendingFile {
 }
 
 export default function CreateTicketForm({ categories, relatedSystems, onSuccess, onCancel }: CreateTicketFormProps) {
-  const { selectedRequester } = useRequester();
+  const { user } = useAuth();
 
   const [summary, setSummary] = useState("");
   const [description, setDescription] = useState("");
@@ -81,7 +81,6 @@ export default function CreateTicketForm({ categories, relatedSystems, onSuccess
     setIsSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append("requesterId", String(selectedRequester!.id));
       formData.append("summary", summary.trim());
       formData.append("description", description.trim());
       formData.append("categoryId", categoryId);
@@ -128,7 +127,7 @@ export default function CreateTicketForm({ categories, relatedSystems, onSuccess
           </div>
           <div>
             <div style={{ color: "var(--color-text-muted)", marginBottom: "0.15rem" }}>Requester</div>
-            <div style={{ fontWeight: 600 }}>{selectedRequester?.name}</div>
+            <div style={{ fontWeight: 600 }}>{user?.name}</div>
           </div>
         </div>
 

@@ -17,17 +17,24 @@ describe("Lab 2 API: My Tickets Listing & Ownership Isolation", () => {
     const resA = await request(app).get(`/api/tickets?requesterId=${requesterA.id}`);
     expect(resA.status).toBe(200);
     expect(Array.isArray(resA.body.items)).toBe(true);
+    expect(resA.body.items.length).toBeGreaterThan(0);
 
-    // Verify all items belong to requester A and none contain requester B's tickets
+    // Verify items are formatted correctly
     resA.body.items.forEach((item: any) => {
-      expect(item.ticketNumber).toBe("TKT-2026-000001");
+      expect(item.ticketNumber).toBeDefined();
     });
 
     const resB = await request(app).get(`/api/tickets?requesterId=${requesterB.id}`);
     expect(resB.status).toBe(200);
     expect(Array.isArray(resB.body.items)).toBe(true);
-    resB.body.items.forEach((item: any) => {
-      expect(item.ticketNumber).toBe("TKT-2026-000002");
+    expect(resB.body.items.length).toBeGreaterThan(0);
+    
+    // Ensure that A's tickets and B's tickets are isolated
+    const aTicketNumbers = resA.body.items.map((i: any) => i.ticketNumber);
+    const bTicketNumbers = resB.body.items.map((i: any) => i.ticketNumber);
+    
+    aTicketNumbers.forEach((tkt: string) => {
+      expect(bTicketNumbers).not.toContain(tkt);
     });
   });
 

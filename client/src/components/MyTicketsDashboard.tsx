@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useRequester } from "../context/RequesterContext.js";
+import { useAuth } from "../context/AuthContext.js";
 import { Ticket, Category, TicketListResponse, fetchTickets, fetchCategories } from "../api.js";
 
 const STATUS_OPTIONS = ["ALL", "NEW", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"] as const;
@@ -41,7 +41,7 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refreshKey }: MyTicketsDashboardProps) {
-  const { selectedRequester } = useRequester();
+  const { user } = useAuth();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -63,11 +63,10 @@ export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refre
   }, []);
 
   const loadTickets = useCallback(async () => {
-    if (!selectedRequester) return;
     setIsLoading(true);
     setError(null);
     try {
-      const result: TicketListResponse = await fetchTickets(selectedRequester.id, {
+      const result: TicketListResponse = await fetchTickets({
         search: search || undefined,
         categoryId: filterCategory ? Number(filterCategory) : undefined,
         priority: filterPriority !== "ALL" ? filterPriority : undefined,
@@ -83,7 +82,7 @@ export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refre
     } finally {
       setIsLoading(false);
     }
-  }, [selectedRequester, search, filterCategory, filterPriority, filterStatus, currentPage, refreshKey]);
+  }, [search, filterCategory, filterPriority, filterStatus, currentPage, refreshKey]);
 
   useEffect(() => {
     loadTickets();
@@ -112,7 +111,7 @@ export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refre
         <div>
           <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>📋 My Tickets</h2>
           <p style={{ margin: "0.2rem 0 0", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>
-            Viewing as <strong>{selectedRequester?.name}</strong>
+            Viewing as <strong>{user?.name}</strong>
             {totalItems > 0 && <span> · {totalItems} ticket{totalItems !== 1 ? "s" : ""}</span>}
           </p>
         </div>

@@ -151,3 +151,51 @@ Before declaring DoD complete, screenshots must be captured under `artifacts/lab
 1. `create-ticket/`: Desktop initial, validation errors, file attached, busy/submitting state, success confirmation.
 2. `my-tickets/`: Desktop full table, filtered results, empty state, mobile card view.
 3. `ticket-detail/`: Desktop view with active attachment, soft-removal modal, and post-removal metadata view.
+
+---
+
+## 9. Accessibility Labels & ARIA Attributes
+
+### 9.1 Global Application Shell
+* **App Header `<header>`:** `role="banner"`, contains the application name and the Requester switcher dropdown.
+* **Main Navigation `<nav>`:** `aria-label="Primary navigation"` to distinguish from any secondary nav regions.
+* **Main Content `<main>`:** `role="main"` to mark the primary content area for screen readers.
+* **Skip Link:** `<a href="#main-content" class="sr-only">Skip to main content</a>` placed as the first focusable element for keyboard-only users.
+
+### 9.2 Requester Selection Screen
+* **Dropdown `<select>`:** `id="requester-select"`, `aria-label="Select Development Requester"`, `aria-required="true"`.
+* **Warning Banner:** `role="alert"` on the cautionary callout to surface development context notice to assistive technologies.
+* **Continue Button:** `aria-disabled="true"` when no Requester is selected; removed once a valid selection is made.
+
+### 9.3 Create Ticket Form
+* **Form element:** `aria-label="Create new support ticket"`.
+* **Required Fields:** Each `<label>` associated via `for`/`id` pairing. Required inputs carry `aria-required="true"` and `required` attributes.
+* **Inline Validation Errors:** Error `<p>` elements carry `role="alert"` and `aria-live="assertive"` so they are announced immediately on validation failure. Each error is linked to its input via `aria-describedby="[field-id]-error"`.
+* **Character Counter:** `aria-live="polite"` on the character count span so updates are announced without interrupting the user mid-typing.
+* **Attachment Drop Zone:** `role="region"`, `aria-label="File attachment drop zone"`. File removal buttons use `aria-label="Remove [filename]"`.
+* **Submit Button (Busy State):** `aria-busy="true"` and `aria-label="Submitting ticket, please wait"` during the pending request.
+
+### 9.4 My Tickets Screen
+* **Search Input:** `aria-label="Search tickets by number or summary"`, `type="search"`.
+* **Filter Selects:** Each filter carries a descriptive `aria-label` (e.g., `aria-label="Filter by category"`, `aria-label="Filter by priority"`, `aria-label="Filter by status"`).
+* **Data Table `<table>`:** `aria-label="My submitted tickets"`. Sortable column headers use `<button>` with `aria-sort="ascending"` or `"descending"` attributes toggled on activation.
+* **Pagination Controls:** Wrapped in `<nav aria-label="Ticket list pagination">`. Previous/Next buttons have `aria-label="Go to previous page"` / `"Go to next page"`. Current page button carries `aria-current="page"`.
+* **Empty State:** `role="status"` on the empty illustration container so the "No tickets submitted yet" message is surfaced to screen readers.
+* **No-Results State:** `aria-live="polite"` on the results region so that filter-induced no-results messages are announced when the list updates.
+
+### 9.5 Ticket Detail Screen
+* **Back Link:** `aria-label="Back to My Tickets list"`.
+* **Status Badge:** `aria-label="Current status: New"` (value injected dynamically per ticket).
+* **Priority Badge:** `aria-label="Requested priority: Medium"` (value injected dynamically).
+* **Attachment List `<ul>`:** `aria-label="Ticket attachments"`. Each list item identifies the file by name.
+  * **Download Button:** `aria-label="Download [filename]"`.
+  * **Remove Button (Active):** `aria-label="Remove attachment [filename]"`.
+  * **Removed Badge:** `aria-label="Attachment removed on [date]. Reason: [reason]"` on the muted metadata row.
+* **Add Attachment Button (Disabled at limit):** `aria-disabled="true"` and `aria-label="Cannot add more attachments — maximum of 5 reached"` when the 5-attachment cap is reached.
+
+### 9.6 Soft-Removal Confirmation Modal
+* **Modal Container:** `role="dialog"`, `aria-modal="true"`, `aria-labelledby="modal-title"`.
+* **Modal Title:** `id="modal-title"` to link with the dialog's `aria-labelledby`.
+* **Reason Textarea:** `aria-label="Removal reason"`, `aria-required="true"`, `aria-describedby="removal-reason-error"` when error is displayed.
+* **Focus Management:** On modal open, focus is moved to the Reason textarea. On modal close (cancel or confirm), focus returns to the triggering Remove button.
+* **Keyboard Trap:** Tab and Shift+Tab cycle only between modal elements while open. `Escape` key closes the modal and returns focus.

@@ -1,6 +1,3 @@
-// Prisma schema — datasource and generator are pre-wired.
-// Your DATABASE_URL lives in server/.env (copy it from .env.example).
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,9 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ---------------------------------------------------------------------------
-// Lab 2 Data Models — TokTickIT Requester Ticketing MVP
-// ---------------------------------------------------------------------------
+model User {
+  id                 Int             @id @default(autoincrement())
+  name               String
+  email              String          @unique
+  passwordHash       String
+  role               Role            @default(REQUESTER)
+  isActive           Boolean         @default(true)
+  mustChangePassword Boolean         @default(false)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  internalNotes      InternalNote[]
+  publicComments     PublicComment[]
+  assignedTickets    Ticket[]        @relation("AssignedTickets")
+  tickets            Ticket[]        @relation("RequesterTickets")
+
+  @@index([email])
+  @@index([role, isActive])
+}
 
 model RequesterUser {
   id        Int      @id @default(autoincrement())
@@ -20,7 +32,7 @@ model RequesterUser {
   email     String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-  tickets   Ticket[]
+  tickets   Ticket[] @relation("LegacyRequesterTickets")
 }
 
 model Category {
@@ -39,30 +51,39 @@ model RelatedSystem {
 }
 
 model Ticket {
-  id                Int           @id @default(autoincrement())
-  ticketNumber      String        @unique
-  summary           String
-  description       String
-  requestedPriority String        @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
-  itPriority        String?       // Optional IT staff priority (for future labs)
-  currentStatus     String        @default("NEW")    // NEW, IN_PROGRESS, RESOLVED, CLOSED
-  requesterId       Int
-  requester         RequesterUser @relation(fields: [requesterId], references: [id])
-  categoryId        Int
-  category          Category      @relation(fields: [categoryId], references: [id])
-  relatedSystemId   Int
-  relatedSystem     RelatedSystem @relation(fields: [relatedSystemId], references: [id])
-  attachments       Attachment[]
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                 Int             @id @default(autoincrement())
+  ticketNumber       String          @unique
+  summary            String
+  description        String
+  requestedPriority  String          @default("MEDIUM")
+  itPriority         String?
+  currentStatus      String          @default("NEW")
+  requesterId        Int?
+  categoryId         Int
+  relatedSystemId    Int
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  userId             Int?
+  assignedToId       Int?
+  resolveIndicatedAt DateTime?
+  attachments        Attachment[]
+  internalNotes      InternalNote[]
+  publicComments     PublicComment[]
+  assignedTo         User?           @relation("AssignedTickets", fields: [assignedToId], references: [id])
+  category           Category        @relation(fields: [categoryId], references: [id])
+  relatedSystem      RelatedSystem   @relation(fields: [relatedSystemId], references: [id])
+  requester          RequesterUser?  @relation("LegacyRequesterTickets", fields: [requesterId], references: [id], onDelete: Restrict)
+  user               User?           @relation("RequesterTickets", fields: [userId], references: [id])
 
   @@index([requesterId, createdAt])
+  @@index([userId, createdAt])
+  @@index([assignedToId, currentStatus])
+  @@index([currentStatus])
 }
 
 model Attachment {
   id            Int       @id @default(autoincrement())
   ticketId      Int
-  ticket        Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   originalName  String
   storedName    String
   mimeType      String
@@ -71,6 +92,37 @@ model Attachment {
   removedAt     DateTime?
   removalReason String?
   createdAt     DateTime  @default(now())
+  ticket        Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId, isRemoved])
+}
+
+model PublicComment {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id])
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+}
+
+model InternalNote {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id])
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+}
+
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMINISTRATOR
 }
