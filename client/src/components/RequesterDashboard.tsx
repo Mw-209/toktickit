@@ -13,23 +13,31 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isCurrent = true;
     if (!user || user.role !== "REQUESTER") {
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    setError(null);
     fetchRequesterDashboard()
       .then((res) => {
+        if (!isCurrent) return;
         setData(res);
         setError(null);
       })
       .catch((err: any) => {
+        if (!isCurrent) return;
         setError(err.message || "Failed to load dashboard data");
       })
       .finally(() => {
-        setLoading(false);
+        if (isCurrent) setLoading(false);
       });
+
+    return () => {
+      isCurrent = false;
+    };
   }, [user]);
 
   // Check role permission
@@ -101,8 +109,18 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
         </div>
       </div>
 
-      {error && (
-        <div className="zen-alert zen-alert-danger" style={{ marginBottom: "1.5rem" }}>
+      {error && !data && (
+        <div
+          className="zen-alert zen-alert-danger"
+          style={{
+            marginBottom: "1.5rem",
+            padding: "0.75rem 1rem",
+            backgroundColor: "#fee2e2",
+            color: "#b91c1c",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid #fca5a5",
+          }}
+        >
           <span>{error}</span>
         </div>
       )}
