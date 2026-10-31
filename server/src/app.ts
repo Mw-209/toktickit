@@ -1517,6 +1517,192 @@ app.patch(
   }
 );
 
+// ---------------------------------------------------------------------------
+// Lab 4: Role Dashboard Endpoints (Issue 5)
+// ---------------------------------------------------------------------------
+
+// GET /api/dashboard/requester: Requester Dashboard metrics
+app.get("/api/dashboard/requester", requireAuth, requireRole("REQUESTER"), async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const userId = req.user!.userId;
+
+    const sessionUser = await prisma.user.findUnique({ where: { id: userId } });
+    const legacyRequester = sessionUser ? await prisma.requesterUser.findUnique({ where: { email: sessionUser.email } }) : null;
+
+    const baseCondition: any = legacyRequester
+      ? { OR: [{ userId }, { requesterId: legacyRequester.id }] }
+      : { userId };
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [totalOpenTickets, waitingForRequester, recentlyUpdated, recentlyResolved, recentTickets] = await Promise.all([
+      prisma.ticket.count({
+        where: {
+          ...baseCondition,
+          currentStatus: { notIn: ["RESOLVED", "CLOSED", "CANCELLED"] },
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          ...baseCondition,
+          currentStatus: "WAITING_FOR_REQUESTER",
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          ...baseCondition,
+          updatedAt: { gte: sevenDaysAgo },
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          ...baseCondition,
+          currentStatus: "RESOLVED",
+          updatedAt: { gte: sevenDaysAgo },
+        },
+      }),
+      prisma.ticket.findMany({
+        where: baseCondition,
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        include: {
+          category: true,
+          relatedSystem: true,
+        },
+      }),
+    ]);
+
+    return res.status(200).json({
+      totalOpenTickets: totalOpenTickets ?? 0,
+      totalOpen: totalOpenTickets ?? 0,
+      waitingForRequester: waitingForRequester ?? 0,
+      recentlyUpdated: recentlyUpdated ?? 0,
+      recentlyResolved: recentlyResolved ?? 0,
+      recentTickets: recentTickets ?? [],
+    });
+  } catch (error: any) {
+    console.error("Failed to fetch requester dashboard:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
+// GET /api/dashboard/staff: IT Staff / Admin Dashboard metrics
+app.get("/api/dashboard/staff", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const staffId = req.user!.userId;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      unassignedCount,
+      myTicketsCount,
+      statusGroups,
+      recentlyUpdatedCount,
+      myRecentActions,
+      recentTicketsList,
+    ] = await Promise.all([
+      prisma.ticket.count({
+        where: {
+          assignedToId: null,
+          currentStatus: { notIn: ["CLOSED", "CANCELLED"] },
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          assignedToId: staffId,
+          currentStatus: { notIn: ["CLOSED", "CANCELLED"] },
+        },
+      }),
+      prisma.ticket.groupBy({
+        by: ["currentStatus"],
+        _count: { _all: true },
+      }),
+      prisma.ticket.count({
+        where: {
+          updatedAt: { gte: sevenDaysAgo },
+        },
+      }),
+      prisma.actionTaken.findMany({
+        where: {
+          performedById: staffId,
+        },
+        orderBy: { actionDateTime: "desc" },
+        take: 5,
+        include: {
+          ticket: {
+            select: { id: true, ticketNumber: true, summary: true },
+          },
+        },
+      }),
+      prisma.ticket.findMany({
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        include: {
+          category: true,
+          requester: { select: { id: true, name: true, email: true } },
+          assignedTo: { select: { id: true, name: true, role: true } },
+        },
+      }),
+    ]);
+
+    const statusMap: Record<string, number> = {
+      New: 0,
+      Open: 0,
+      InProgress: 0,
+      WaitingForRequester: 0,
+      Resolved: 0,
+      Closed: 0,
+      Cancelled: 0,
+      Reopened: 0,
+      NEW: 0,
+      OPEN: 0,
+      IN_PROGRESS: 0,
+      WAITING_FOR_REQUESTER: 0,
+      RESOLVED: 0,
+      CLOSED: 0,
+      CANCELLED: 0,
+      REOPENED: 0,
+    };
+
+    for (const group of statusGroups) {
+      const s = group.currentStatus;
+      const count = group._count._all;
+      if (s === "NEW") { statusMap.New = count; statusMap.NEW = count; }
+      else if (s === "OPEN") { statusMap.Open = count; statusMap.OPEN = count; }
+      else if (s === "IN_PROGRESS") { statusMap.InProgress = count; statusMap.IN_PROGRESS = count; }
+      else if (s === "WAITING_FOR_REQUESTER") { statusMap.WaitingForRequester = count; statusMap.WAITING_FOR_REQUESTER = count; }
+      else if (s === "RESOLVED") { statusMap.Resolved = count; statusMap.RESOLVED = count; }
+      else if (s === "CLOSED") { statusMap.Closed = count; statusMap.CLOSED = count; }
+      else if (s === "CANCELLED") { statusMap.Cancelled = count; statusMap.CANCELLED = count; }
+      else if (s === "REOPENED") { statusMap.Reopened = count; statusMap.REOPENED = count; }
+    }
+
+    const formattedActions = myRecentActions.map((a: any) => ({
+      actionId: a.id,
+      ticketId: a.ticketId,
+      ticketTitle: a.ticket?.summary || a.ticket?.ticketNumber || "",
+      ticketNumber: a.ticket?.ticketNumber || "",
+      actionDateTime: a.actionDateTime,
+      actionDescription: a.actionDescription,
+    }));
+
+    return res.status(200).json({
+      unassignedTickets: unassignedCount ?? 0,
+      unassignedCount: unassignedCount ?? 0,
+      myTickets: myTicketsCount ?? 0,
+      myTicketsCount: myTicketsCount ?? 0,
+      ticketsByStatus: statusMap,
+      recentlyUpdated: recentlyUpdatedCount ?? 0,
+      myRecentActions: formattedActions,
+      recentTickets: recentTicketsList,
+    });
+  } catch (error: any) {
+    console.error("Failed to fetch staff dashboard:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
 // GET /api/admin/users: List users
 app.get("/api/admin/users", requireAuth, requireRole("ADMINISTRATOR"), async (req: Request, res: Response) => {
   try {

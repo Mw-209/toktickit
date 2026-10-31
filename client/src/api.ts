@@ -230,7 +230,8 @@ export async function fetchTicketDetail(id: number): Promise<Ticket> {
   return res.json();
 }
 
-export async function uploadAttachment(ticketId: number, file: File): Promise<Attachment> {
+export async function uploadAttachment(ticketId: number, fileOrRequesterId: File | number, maybeFile?: File): Promise<Attachment> {
+  const file = maybeFile instanceof File ? maybeFile : (fileOrRequesterId as File);
   const formData = new FormData();
   formData.append("file", file);
 
@@ -249,8 +250,10 @@ export async function uploadAttachment(ticketId: number, file: File): Promise<At
 export async function softRemoveAttachment(
   ticketId: number,
   attachmentId: number,
-  removalReason: string
+  reasonOrRequesterId: string | number,
+  maybeReason?: string
 ): Promise<Attachment> {
+  const removalReason = typeof maybeReason === "string" ? maybeReason : (reasonOrRequesterId as string);
   const res = await fetch(
     `${API_URL}/api/tickets/${ticketId}/attachments/${attachmentId}`,
     fetchOpts({
@@ -534,6 +537,58 @@ export async function updateActionTaken(ticketId: number, actionId: number, payl
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || err.error?.message || "Failed to update action taken");
+  }
+  return res.json();
+}
+
+
+// ---------------------------------------------------------------------------
+// Lab 4 - Role Dashboard Endpoints (Issue 5)
+// ---------------------------------------------------------------------------
+
+export interface RequesterDashboardData {
+  totalOpenTickets: number;
+  totalOpen?: number;
+  waitingForRequester: number;
+  recentlyUpdated: number;
+  recentlyResolved: number;
+  recentTickets?: Ticket[];
+}
+
+export interface StaffDashboardData {
+  unassignedTickets: number;
+  unassignedCount?: number;
+  myTickets: number;
+  myTicketsCount?: number;
+  ticketsByStatus: Record<string, number>;
+  recentlyUpdated: number;
+  myRecentActions: Array<{
+    actionId: number;
+    ticketId: number;
+    ticketTitle: string;
+    ticketNumber?: string;
+    actionDateTime: string;
+    actionDescription: string;
+  }>;
+  recentTickets?: Ticket[];
+}
+
+export async function fetchRequesterDashboard(): Promise<RequesterDashboardData> {
+  const res = await fetch(`${API_URL}/api/dashboard/requester`, fetchOpts());
+  if (!res.ok) {
+    if (res.status === 403) throw new Error("Access Denied: Requester only.");
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || data.error?.message || "Failed to fetch requester dashboard");
+  }
+  return res.json();
+}
+
+export async function fetchStaffDashboard(): Promise<StaffDashboardData> {
+  const res = await fetch(`${API_URL}/api/dashboard/staff`, fetchOpts());
+  if (!res.ok) {
+    if (res.status === 403) throw new Error("Access Denied: IT Staff and Administrators only.");
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || data.error?.message || "Failed to fetch staff dashboard");
   }
   return res.json();
 }

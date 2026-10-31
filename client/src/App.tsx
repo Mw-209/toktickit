@@ -9,9 +9,11 @@ import TicketDetailView from "./components/TicketDetailView.js";
 import { StaffTicketQueue } from "./components/StaffTicketQueue.js";
 import StaffTicketDetail from "./components/StaffTicketDetail.js";
 import { AdminUserManagement } from "./components/AdminUserManagement.js";
+import StaffDashboard from "./components/StaffDashboard.js";
+import RequesterDashboard from "./components/RequesterDashboard.js";
 import { Category, RelatedSystem, fetchCategories, fetchRelatedSystems, checkSystem, SystemStatus } from "./api.js";
 
-type Page = "my-tickets" | "create-ticket" | "ticket-detail" | "staff-queue" | "staff-ticket-detail" | "admin-users";
+type Page = "my-tickets" | "create-ticket" | "ticket-detail" | "staff-queue" | "staff-ticket-detail" | "admin-users" | "staff-dashboard" | "requester-dashboard";
 
 export default function App() {
   const { user, isLoading } = useAuth();
@@ -28,10 +30,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (user && currentPage !== "ticket-detail") {
-      if (user.role === "REQUESTER") setCurrentPage("my-tickets");
-      else if (user.role === "IT_STAFF") setCurrentPage("staff-queue");
-      else if (user.role === "ADMINISTRATOR") setCurrentPage("admin-users");
+    if (user && currentPage !== "ticket-detail" && currentPage !== "staff-ticket-detail") {
+      if (user.role === "REQUESTER") setCurrentPage("requester-dashboard");
+      else if (user.role === "IT_STAFF" || user.role === "ADMINISTRATOR") setCurrentPage("staff-dashboard");
     }
   }, [user]);
 
@@ -86,6 +87,33 @@ export default function App() {
           </div>
         )}
 
+        {/* Dashboards (Issue 5) */}
+        {currentPage === "staff-dashboard" && (
+          <StaffDashboard
+            onNavigate={(page, params) => {
+              if (page === "staff-ticket-detail" && params?.ticketId) {
+                setSelectedTicketId(params.ticketId);
+                setCurrentPage("staff-ticket-detail");
+              } else {
+                setCurrentPage(page as Page);
+              }
+            }}
+          />
+        )}
+
+        {currentPage === "requester-dashboard" && (
+          <RequesterDashboard
+            onNavigate={(page, params) => {
+              if (page === "ticket-detail" && (params?.ticketId || params?.id)) {
+                setSelectedTicketId(params.ticketId || params.id);
+                setCurrentPage("ticket-detail");
+              } else {
+                setCurrentPage(page as Page);
+              }
+            }}
+          />
+        )}
+
         {currentPage === "my-tickets" && (
           <MyTicketsDashboard
             onViewTicket={handleViewTicket}
@@ -123,13 +151,21 @@ export default function App() {
           />
         )}
 
-        {currentPage === "ticket-detail" && selectedTicketId && (
-          <TicketDetailView 
-            ticketId={selectedTicketId} 
-            onBack={() => setCurrentPage(user.role === "REQUESTER" ? "my-tickets" : "staff-queue")} 
-          />
+        {currentPage === "ticket-detail" && (
+          selectedTicketId ? (
+            <TicketDetailView 
+              ticketId={selectedTicketId} 
+              onBack={() => setCurrentPage(user.role === "REQUESTER" ? "my-tickets" : "staff-queue")} 
+            />
+          ) : (
+            <div className="zen-alert zen-alert-danger" style={{ margin: "2rem auto", maxWidth: "600px", textAlign: "center" }}>
+              <p style={{ margin: "0 0 1rem 0" }}>No ticket selected.</p>
+              <button className="btn-zen-secondary" onClick={() => setCurrentPage(user.role === "REQUESTER" ? "my-tickets" : "staff-queue")}>
+                Return to Tickets
+              </button>
+            </div>
+          )
         )}
-
 
         {currentPage === "admin-users" && (
           <AdminUserManagement />

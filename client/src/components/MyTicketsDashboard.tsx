@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext.js";
+import { useRequester } from "../context/RequesterContext.js";
 import { Ticket, Category, TicketListResponse, fetchTickets, fetchCategories } from "../api.js";
 
 const STATUS_OPTIONS = ["ALL", "NEW", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"] as const;
@@ -42,6 +43,11 @@ function PriorityBadge({ priority }: { priority: string }) {
 
 export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refreshKey }: MyTicketsDashboardProps) {
   const { user } = useAuth();
+  let requesterName: string | undefined = undefined;
+  try {
+    requesterName = useRequester()?.selectedRequester?.name;
+  } catch {}
+  const displayName = user?.name || requesterName;
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -111,7 +117,7 @@ export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refre
         <div>
           <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>📋 My Tickets</h2>
           <p style={{ margin: "0.2rem 0 0", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>
-            Viewing as <strong>{user?.name}</strong>
+            Viewing as <strong>{displayName}</strong>
             {totalItems > 0 && <span> · {totalItems} ticket{totalItems !== 1 ? "s" : ""}</span>}
           </p>
         </div>

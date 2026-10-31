@@ -1,8 +1,8 @@
 import { useAuth } from "../context/AuthContext.js";
 
 interface NavbarProps {
-  currentPage: "my-tickets" | "create-ticket" | "staff-queue" | "admin-users" | "other";
-  onNavigate: (page: "my-tickets" | "create-ticket" | "staff-queue" | "admin-users") => void;
+  currentPage: "my-tickets" | "create-ticket" | "staff-queue" | "admin-users" | "staff-dashboard" | "requester-dashboard" | "other";
+  onNavigate: (page: "my-tickets" | "create-ticket" | "staff-queue" | "admin-users" | "staff-dashboard" | "requester-dashboard") => void;
 }
 
 export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
@@ -21,6 +21,28 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
         {/* Navigation Links */}
         {user && !user.mustChangePassword && (
           <nav style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            {/* Requester Dashboard */}
+            {user.role === "REQUESTER" && (
+              <button
+                id="nav-requester-dashboard"
+                className={`zen-nav-link ${currentPage === "requester-dashboard" ? "active" : ""}`}
+                onClick={() => onNavigate("requester-dashboard")}
+              >
+                📊 Dashboard
+              </button>
+            )}
+
+            {/* IT Staff & Admin Dashboard */}
+            {(user.role === "IT_STAFF" || user.role === "ADMINISTRATOR") && (
+              <button
+                id="nav-staff-dashboard"
+                className={`zen-nav-link ${currentPage === "staff-dashboard" ? "active" : ""}`}
+                onClick={() => onNavigate("staff-dashboard")}
+              >
+                📊 Dashboard
+              </button>
+            )}
+
             {(user.role === "REQUESTER" || user.role === "IT_STAFF") && (
               <button
                 id="nav-my-tickets"
