@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ActionsTakenSection from "./ActionsTakenSection.js";
 import { useAuth } from "../context/AuthContext.js";
 import {
   Ticket,
