@@ -301,7 +301,7 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
                     <tr key={t.id}>
                       <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
                         <button
-                          onClick={() => onNavigate("ticket-detail", { id: t.id })}
+                          onClick={() => onNavigate("ticket-detail", { ticketId: t.id, id: t.id })}
                           style={{
                             background: "none",
                             border: "none",
@@ -332,7 +332,7 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
                         <button
                           className="btn-zen-secondary"
                           style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}
-                          onClick={() => onNavigate("ticket-detail", { id: t.id })}
+                          onClick={() => onNavigate("ticket-detail", { ticketId: t.id, id: t.id })}
                         >
                           View
                         </button>

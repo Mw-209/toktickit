@@ -104,7 +104,12 @@ export default function App() {
         {currentPage === "requester-dashboard" && (
           <RequesterDashboard
             onNavigate={(page, params) => {
-              setCurrentPage(page as Page);
+              if (page === "ticket-detail" && (params?.ticketId || params?.id)) {
+                setSelectedTicketId(params.ticketId || params.id);
+                setCurrentPage("ticket-detail");
+              } else {
+                setCurrentPage(page as Page);
+              }
             }}
           />
         )}
@@ -146,11 +151,20 @@ export default function App() {
           />
         )}
 
-        {currentPage === "ticket-detail" && selectedTicketId && (
-          <TicketDetailView 
-            ticketId={selectedTicketId} 
-            onBack={() => setCurrentPage(user.role === "REQUESTER" ? "my-tickets" : "staff-queue")} 
-          />
+        {currentPage === "ticket-detail" && (
+          selectedTicketId ? (
+            <TicketDetailView 
+              ticketId={selectedTicketId} 
+              onBack={() => setCurrentPage(user.role === "REQUESTER" ? "my-tickets" : "staff-queue")} 
+            />
+          ) : (
+            <div className="zen-alert zen-alert-danger" style={{ margin: "2rem auto", maxWidth: "600px", textAlign: "center" }}>
+              <p style={{ margin: "0 0 1rem 0" }}>No ticket selected.</p>
+              <button className="btn-zen-secondary" onClick={() => setCurrentPage(user.role === "REQUESTER" ? "my-tickets" : "staff-queue")}>
+                Return to Tickets
+              </button>
+            </div>
+          )
         )}
 
         {currentPage === "admin-users" && (
