@@ -552,6 +552,7 @@ export interface RequesterDashboardData {
   waitingForRequester: number;
   recentlyUpdated: number;
   recentlyResolved: number;
+  recentTickets?: Ticket[];
 }
 
 export interface StaffDashboardData {

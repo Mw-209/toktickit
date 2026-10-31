@@ -12,32 +12,28 @@ export default function StaffDashboard({ onNavigate }: StaffDashboardProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isCurrent = true;
+  const loadDashboard = () => {
     if (!user || (user.role !== "IT_STAFF" && user.role !== "ADMINISTRATOR")) {
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError(null);
     fetchStaffDashboard()
       .then((res) => {
-        if (!isCurrent) return;
         setData(res);
         setError(null);
       })
       .catch((err: any) => {
-        if (!isCurrent) return;
         setError(err.message || "Failed to load dashboard data");
       })
       .finally(() => {
-        if (isCurrent) setLoading(false);
+        setLoading(false);
       });
+  };
 
-    return () => {
-      isCurrent = false;
-    };
+  useEffect(() => {
+    loadDashboard();
   }, [user]);
 
   // Check role permission
@@ -94,16 +90,29 @@ export default function StaffDashboard({ onNavigate }: StaffDashboardProps) {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: "1.75rem", color: "var(--color-primary-green)" }}>📊 IT Staff Dashboard</h1>
-          <p className="zen-meta" style={{ margin: "0.25rem 0 0 0" }}>Operational overview and workload metrics.</p>
+          <h1 style={{ margin: 0, fontSize: "1.875rem", fontWeight: 700, color: "var(--color-text-main, #1f2937)" }}>
+            Welcome back, {user?.name ? user.name.split(" ")[0] : "Staff"}!
+          </h1>
+          <p className="zen-meta" style={{ margin: "0.25rem 0 0 0", color: "var(--color-text-muted)", fontSize: "0.95rem" }}>
+            Here's what's happening with your queue today.
+          </p>
         </div>
-        <button
-          className="btn-zen-primary"
-          onClick={() => onNavigate("staff-queue")}
-          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-        >
-          <span>🧑‍💻</span> Go to Ticket Queue
-        </button>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            className="btn-zen-secondary"
+            onClick={loadDashboard}
+            title="Refresh dashboard metrics"
+          >
+            🔄 Refresh
+          </button>
+          <button
+            className="btn-zen-primary"
+            onClick={() => onNavigate("staff-queue")}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <span>🧑‍💻</span> Go to Ticket Queue
+          </button>
+        </div>
       </div>
 
       {error && !data && (

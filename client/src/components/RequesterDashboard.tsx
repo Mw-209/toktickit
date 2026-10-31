@@ -12,32 +12,28 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isCurrent = true;
+  const loadDashboard = () => {
     if (!user || user.role !== "REQUESTER") {
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError(null);
     fetchRequesterDashboard()
       .then((res) => {
-        if (!isCurrent) return;
         setData(res);
         setError(null);
       })
       .catch((err: any) => {
-        if (!isCurrent) return;
         setError(err.message || "Failed to load dashboard data");
       })
       .finally(() => {
-        if (isCurrent) setLoading(false);
+        setLoading(false);
       });
+  };
 
-    return () => {
-      isCurrent = false;
-    };
+  useEffect(() => {
+    loadDashboard();
   }, [user]);
 
   // Check role permission
@@ -81,6 +77,22 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
   const recentlyUpdated = data?.recentlyUpdated ?? 0;
   const recentlyResolved = data?.recentlyResolved ?? 0;
 
+  const getStatusBadge = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case "NEW":
+      case "OPEN":
+        return "zen-badge-new";
+      case "IN_PROGRESS":
+        return "zen-badge-inprogress";
+      case "WAITING_FOR_REQUESTER":
+        return "zen-badge-pending";
+      case "RESOLVED":
+        return "zen-badge-resolved";
+      default:
+        return "zen-badge-closed";
+    }
+  };
+
   return (
     <div className="zen-container" style={{ paddingTop: "1.5rem", paddingBottom: "3rem" }}>
       {/* Header */}
@@ -94,6 +106,13 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
           </p>
         </div>
         <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            className="btn-zen-secondary"
+            onClick={loadDashboard}
+            title="Refresh dashboard metrics"
+          >
+            🔄 Refresh
+          </button>
           <button
             className="btn-zen-secondary"
             onClick={() => onNavigate("my-tickets")}
@@ -224,6 +243,7 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
             padding: "2.5rem 1.5rem",
             backgroundColor: "var(--color-pale-green)",
             border: "1px dashed var(--color-secondary-green)",
+            marginBottom: "2rem",
           }}
         >
           <span style={{ fontSize: "2.5rem", display: "block", marginBottom: "0.75rem" }}>🎉</span>
@@ -241,6 +261,140 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
           </button>
         </div>
       )}
+
+      {/* Bottom Section: My Recent Tickets + Quick Actions */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem", alignItems: "start" }}>
+        
+        {/* Left Column: My Recent Tickets */}
+        <div className="zen-card" style={{ padding: "1.25rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 600, color: "var(--color-primary-green)" }}>
+              📋 My Recent Tickets
+            </h3>
+            <button
+              className="btn-zen-secondary"
+              style={{ fontSize: "0.85rem", padding: "0.25rem 0.6rem" }}
+              onClick={() => onNavigate("my-tickets")}
+            >
+              View all →
+            </button>
+          </div>
+
+          {(!data?.recentTickets || data.recentTickets.length === 0) ? (
+            <div style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--color-text-muted)" }}>
+              <p style={{ margin: 0 }}>No tickets recorded yet.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="zen-table" style={{ width: "100%", fontSize: "0.9rem" }}>
+                <thead>
+                  <tr>
+                    <th>TICKET NO.</th>
+                    <th>SUMMARY</th>
+                    <th>STATUS</th>
+                    <th>UPDATED</th>
+                    <th style={{ textAlign: "right" }}>ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.recentTickets.map((t: any) => (
+                    <tr key={t.id}>
+                      <td style={{ fontWeight: 600, color: "var(--color-primary-green)" }}>
+                        {t.ticketNumber}
+                      </td>
+                      <td style={{ maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {t.summary}
+                      </td>
+                      <td>
+                        <span className={`zen-badge ${getStatusBadge(t.currentStatus)}`}>
+                          {t.currentStatus}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
+                        {new Date(t.updatedAt).toLocaleDateString()}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          className="btn-zen-secondary"
+                          style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}
+                          onClick={() => onNavigate("ticket-detail", { id: t.id })}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: Quick Actions */}
+        <div className="zen-card" style={{ padding: "1.25rem" }}>
+          <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.1rem", fontWeight: 600, color: "var(--color-primary-green)" }}>
+            ⚡ Quick Actions
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+            <div
+              className="zen-card"
+              style={{
+                cursor: "pointer",
+                padding: "1rem",
+                border: "1px solid var(--color-border)",
+                transition: "all 0.15s ease",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+              }}
+              onClick={() => onNavigate("create-ticket")}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-primary-green)";
+                e.currentTarget.style.backgroundColor = "var(--color-pale-green)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-border)";
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+            >
+              <div style={{ fontSize: "1.75rem", color: "var(--color-primary-green)" }}>➕</div>
+              <div>
+                <div style={{ fontWeight: 600, color: "var(--color-primary-green)" }}>Create Ticket</div>
+                <div style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>Submit a new request</div>
+              </div>
+            </div>
+
+            <div
+              className="zen-card"
+              style={{
+                cursor: "pointer",
+                padding: "1rem",
+                border: "1px solid var(--color-border)",
+                transition: "all 0.15s ease",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.75rem",
+              }}
+              onClick={() => onNavigate("my-tickets")}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-primary-green)";
+                e.currentTarget.style.backgroundColor = "var(--color-pale-green)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-border)";
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+            >
+              <div style={{ fontSize: "1.75rem", color: "var(--color-primary-green)" }}>📋</div>
+              <div>
+                <div style={{ fontWeight: 600, color: "var(--color-primary-green)" }}>View My Tickets</div>
+                <div style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>Track existing requests</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }

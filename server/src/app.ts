@@ -1536,7 +1536,7 @@ app.get("/api/dashboard/requester", requireAuth, requireRole("REQUESTER"), async
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const [totalOpenTickets, waitingForRequester, recentlyUpdated, recentlyResolved] = await Promise.all([
+    const [totalOpenTickets, waitingForRequester, recentlyUpdated, recentlyResolved, recentTickets] = await Promise.all([
       prisma.ticket.count({
         where: {
           ...baseCondition,
@@ -1562,6 +1562,15 @@ app.get("/api/dashboard/requester", requireAuth, requireRole("REQUESTER"), async
           updatedAt: { gte: sevenDaysAgo },
         },
       }),
+      prisma.ticket.findMany({
+        where: baseCondition,
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        include: {
+          category: true,
+          relatedSystem: true,
+        },
+      }),
     ]);
 
     return res.status(200).json({
@@ -1570,6 +1579,7 @@ app.get("/api/dashboard/requester", requireAuth, requireRole("REQUESTER"), async
       waitingForRequester: waitingForRequester ?? 0,
       recentlyUpdated: recentlyUpdated ?? 0,
       recentlyResolved: recentlyResolved ?? 0,
+      recentTickets: recentTickets ?? [],
     });
   } catch (error: any) {
     console.error("Failed to fetch requester dashboard:", error);
