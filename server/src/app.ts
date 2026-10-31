@@ -1123,6 +1123,281 @@ app.post("/api/tickets/:id/resolve-indication", requireAuth, requireRole("REQUES
   }
 });
 
+// ---------------------------------------------------------------------------
+// Lab 4: Actions Taken Endpoints (Issue 2)
+// ---------------------------------------------------------------------------
+
+// POST /api/tickets/:id/actions: Create Action Taken
+app.post(
+  ["/api/tickets/:ticketId/actions", "/api/tickets/:id/actions"],
+  requireAuth,
+  requireRole("IT_STAFF", "ADMINISTRATOR"),
+  async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId || req.params.id, 10);
+      if (isNaN(ticketId)) {
+        return res.status(400).json({ error: { code: "INVALID_ID", message: "Invalid ticket ID." } });
+      }
+
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        return res.status(404).json({ error: { message: "Ticket not found." } });
+      }
+
+      const {
+        actionDateTime,
+        actionDescription,
+        result,
+        followUpRequired,
+        followUpNote,
+        attachmentNotes,
+      } = req.body;
+
+      if (!actionDescription || typeof actionDescription !== "string" || !actionDescription.trim()) {
+        return res.status(400).json({
+          error: "VALIDATION_FAILED",
+          message: "Action description is required.",
+          field: "actionDescription",
+        });
+      }
+
+      if (!result || typeof result !== "string" || !result.trim()) {
+        return res.status(400).json({
+          error: "VALIDATION_FAILED",
+          message: "Result is required.",
+          field: "result",
+        });
+      }
+
+      const isFollowUp = Boolean(followUpRequired);
+      if (isFollowUp && (!followUpNote || typeof followUpNote !== "string" || !followUpNote.trim())) {
+        return res.status(400).json({
+          error: "VALIDATION_FAILED",
+          message: "Follow-up note is required when follow-up is needed.",
+          field: "followUpNote",
+        });
+      }
+
+      const parsedDate = actionDateTime ? new Date(actionDateTime) : new Date();
+
+      const action = await prisma.actionTaken.create({
+        data: {
+          ticketId,
+          performedById: req.user!.userId,
+          actionDateTime: isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
+          actionDescription: actionDescription.trim(),
+          result: result.trim(),
+          followUpRequired: isFollowUp,
+          followUpNote: isFollowUp ? followUpNote.trim() : (followUpNote ? String(followUpNote).trim() : null),
+          attachmentNotes: attachmentNotes ? String(attachmentNotes).trim() : null,
+          version: 1,
+        },
+        include: {
+          performedBy: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
+
+      return res.status(201).json({
+        id: action.id,
+        ticketId: action.ticketId,
+        performedById: action.performedById,
+        performedByName: action.performedBy.name,
+        actionDateTime: action.actionDateTime,
+        actionDescription: action.actionDescription,
+        result: action.result,
+        followUpRequired: action.followUpRequired,
+        followUpNote: action.followUpNote,
+        attachmentNotes: action.attachmentNotes,
+        version: action.version,
+        createdAt: action.createdAt,
+        updatedAt: action.updatedAt,
+      });
+    } catch (error: any) {
+      console.error("Failed to create Action Taken:", error);
+      return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
+    }
+  }
+);
+
+// PUT /api/tickets/:id/actions/:actionId: Update Action Taken
+app.put(
+  ["/api/tickets/:ticketId/actions/:actionId", "/api/tickets/:id/actions/:actionId"],
+  requireAuth,
+  requireRole("IT_STAFF", "ADMINISTRATOR"),
+  async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId || req.params.id, 10);
+      const actionId = parseInt(req.params.actionId, 10);
+      if (isNaN(ticketId) || isNaN(actionId)) {
+        return res.status(400).json({ error: { message: "Invalid ID parameter." } });
+      }
+
+      const prisma = getPrisma();
+      const action = await prisma.actionTaken.findFirst({
+        where: { id: actionId, ticketId },
+        include: { performedBy: { select: { id: true, name: true, email: true } } },
+      });
+
+      if (!action) {
+        return res.status(404).json({ error: { message: "Action Taken not found." } });
+      }
+
+      const {
+        actionDateTime,
+        actionDescription,
+        result,
+        followUpRequired,
+        followUpNote,
+        attachmentNotes,
+        version,
+      } = req.body;
+
+      // Optimistic concurrency check
+      if (version !== undefined && action.version !== Number(version)) {
+        return res.status(409).json({
+          error: "conflict",
+          message: "Resource was modified by another user.",
+        });
+      }
+
+      const isFollowUp = followUpRequired !== undefined ? Boolean(followUpRequired) : action.followUpRequired;
+      const effectiveNote = followUpNote !== undefined ? followUpNote : action.followUpNote;
+
+      if (isFollowUp && (!effectiveNote || typeof effectiveNote !== "string" || !effectiveNote.trim())) {
+        return res.status(400).json({
+          error: "VALIDATION_FAILED",
+          message: "Follow-up note is required when follow-up is needed.",
+          field: "followUpNote",
+        });
+      }
+
+      const updateData: any = {
+        version: action.version + 1,
+      };
+
+      if (actionDescription !== undefined) {
+        if (!actionDescription || typeof actionDescription !== "string" || !actionDescription.trim()) {
+          return res.status(400).json({ error: "VALIDATION_FAILED", message: "Action description cannot be empty.", field: "actionDescription" });
+        }
+        updateData.actionDescription = actionDescription.trim();
+      }
+
+      if (result !== undefined) {
+        if (!result || typeof result !== "string" || !result.trim()) {
+          return res.status(400).json({ error: "VALIDATION_FAILED", message: "Result cannot be empty.", field: "result" });
+        }
+        updateData.result = result.trim();
+      }
+
+      if (followUpRequired !== undefined) {
+        updateData.followUpRequired = isFollowUp;
+      }
+
+      if (followUpNote !== undefined) {
+        updateData.followUpNote = isFollowUp ? String(followUpNote).trim() : (followUpNote ? String(followUpNote).trim() : null);
+      }
+
+      if (attachmentNotes !== undefined) {
+        updateData.attachmentNotes = attachmentNotes ? String(attachmentNotes).trim() : null;
+      }
+
+      if (actionDateTime !== undefined) {
+        const parsed = new Date(actionDateTime);
+        if (!isNaN(parsed.getTime())) {
+          updateData.actionDateTime = parsed;
+        }
+      }
+
+      const updated = await prisma.actionTaken.update({
+        where: { id: actionId },
+        data: updateData,
+        include: { performedBy: { select: { id: true, name: true, email: true } } },
+      });
+
+      return res.status(200).json({
+        id: updated.id,
+        ticketId: updated.ticketId,
+        performedById: updated.performedById,
+        performedByName: updated.performedBy.name,
+        actionDateTime: updated.actionDateTime,
+        actionDescription: updated.actionDescription,
+        result: updated.result,
+        followUpRequired: updated.followUpRequired,
+        followUpNote: updated.followUpNote,
+        attachmentNotes: updated.attachmentNotes,
+        version: updated.version,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt,
+      });
+    } catch (error: any) {
+      console.error("Failed to update Action Taken:", error);
+      return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
+    }
+  }
+);
+
+// GET /api/tickets/:id/actions: List Actions Taken for a Ticket
+app.get(
+  ["/api/tickets/:ticketId/actions", "/api/tickets/:id/actions"],
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId || req.params.id, 10);
+      if (isNaN(ticketId)) {
+        return res.status(400).json({ error: { message: "Invalid ticket ID." } });
+      }
+
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        return res.status(404).json({ error: { message: "Ticket not found." } });
+      }
+
+      // Requester authorization check: Requester may only view Actions Taken on their own tickets
+      if (req.user!.role === "REQUESTER") {
+        if (ticket.userId !== req.user!.userId && ticket.requesterId !== req.user!.userId) {
+          return res.status(403).json({ error: "FORBIDDEN", message: "You do not have permission to view actions on this ticket." });
+        }
+      }
+
+      const actions = await prisma.actionTaken.findMany({
+        where: { ticketId },
+        include: {
+          performedBy: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+        orderBy: { actionDateTime: "desc" },
+      });
+
+      return res.status(200).json({
+        ticketId,
+        actions: actions.map((a) => ({
+          id: a.id,
+          ticketId: a.ticketId,
+          performedById: a.performedById,
+          performedByName: a.performedBy.name,
+          actionDateTime: a.actionDateTime,
+          actionDescription: a.actionDescription,
+          result: a.result,
+          followUpRequired: a.followUpRequired,
+          followUpNote: a.followUpNote,
+          attachmentNotes: a.attachmentNotes,
+          version: a.version,
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt,
+        })),
+      });
+    } catch (error: any) {
+      console.error("Failed to fetch Actions Taken:", error);
+      return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
+    }
+  }
+);
+
 // GET /api/admin/users: List users
 app.get("/api/admin/users", requireAuth, requireRole("ADMINISTRATOR"), async (req: Request, res: Response) => {
   try {
