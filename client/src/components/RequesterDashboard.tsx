@@ -263,7 +263,7 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
       )}
 
       {/* Bottom Section: My Recent Tickets + Quick Actions */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem", alignItems: "start" }}>
+      <div className="zen-dashboard-grid">
         
         {/* Left Column: My Recent Tickets */}
         <div className="zen-card" style={{ padding: "1.25rem" }}>
@@ -286,34 +286,49 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <table className="zen-table" style={{ width: "100%", fontSize: "0.9rem" }}>
+              <table className="zen-table" style={{ width: "100%", fontSize: "0.875rem" }}>
                 <thead>
                   <tr>
-                    <th>TICKET NO.</th>
+                    <th style={{ whiteSpace: "nowrap" }}>TICKET NO.</th>
                     <th>SUMMARY</th>
-                    <th>STATUS</th>
-                    <th>UPDATED</th>
-                    <th style={{ textAlign: "right" }}>ACTION</th>
+                    <th style={{ whiteSpace: "nowrap" }}>STATUS</th>
+                    <th style={{ whiteSpace: "nowrap" }}>UPDATED</th>
+                    <th style={{ textAlign: "right", whiteSpace: "nowrap" }}>ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.recentTickets.map((t: any) => (
                     <tr key={t.id}>
-                      <td style={{ fontWeight: 600, color: "var(--color-primary-green)" }}>
-                        {t.ticketNumber}
+                      <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+                        <button
+                          onClick={() => onNavigate("ticket-detail", { id: t.id })}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            color: "var(--color-primary-green)",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            textDecoration: "underline",
+                            fontFamily: "inherit",
+                            fontSize: "inherit",
+                          }}
+                        >
+                          {t.ticketNumber}
+                        </button>
                       </td>
-                      <td style={{ maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <td style={{ maxWidth: "240px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={t.summary}>
                         {t.summary}
                       </td>
-                      <td>
+                      <td style={{ whiteSpace: "nowrap" }}>
                         <span className={`zen-badge ${getStatusBadge(t.currentStatus)}`}>
                           {t.currentStatus}
                         </span>
                       </td>
-                      <td style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
+                      <td style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
                         {new Date(t.updatedAt).toLocaleDateString()}
                       </td>
-                      <td style={{ textAlign: "right" }}>
+                      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                         <button
                           className="btn-zen-secondary"
                           style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}

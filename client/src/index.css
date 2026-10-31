@@ -572,3 +572,18 @@ body {
     display: none;
   }
 }
+
+
+/* Dashboard 2-column layout */
+.zen-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(260px, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .zen-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
