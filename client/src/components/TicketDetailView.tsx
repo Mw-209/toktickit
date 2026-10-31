@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import ActionsTakenSection from "./ActionsTakenSection.js";
 import { Ticket, Attachment, PublicComment, fetchTicketDetail, uploadAttachment, softRemoveAttachment, getAttachmentDownloadUrl, fetchComments, postComment, indicateTicketResolved } from "../api.js";
 
 interface TicketDetailViewProps {
@@ -382,6 +383,9 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
           </div>
         </div>
       </div>
+
+      {/* Actions Taken Section (Read-only for Requesters - Lab 4) */}
+      <ActionsTakenSection ticketId={ticketId} readOnly={true} />
 
       {/* Soft-Removal Modal */}
       {removingAttachment && (

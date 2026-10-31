@@ -77,7 +77,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--color-bg-page)" }}>
-      <Navbar currentPage={currentPage === "ticket-detail" ? "other" : currentPage} onNavigate={handleNavigate} />
+      <Navbar currentPage={currentPage === "ticket-detail" || currentPage === "staff-ticket-detail" ? "other" : currentPage} onNavigate={handleNavigate} />
       <div className="zen-container" style={{ paddingTop: "1.5rem" }}>
 
         {successMsg && (

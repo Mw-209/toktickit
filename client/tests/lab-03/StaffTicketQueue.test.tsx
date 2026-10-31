@@ -32,8 +32,6 @@ vi.mock("../../src/api", () => ({
     total: 2, page: 1, pageSize: 10, totalPages: 1,
     pagination: { total: 2, page: 1, pageSize: 10, totalPages: 1 },
   }),
-  fetchStaffAssignees: vi.fn().mockResolvedValue([]),
-  fetchCategories: vi.fn().mockResolvedValue([]),
 }));
 
 function renderQueue() {

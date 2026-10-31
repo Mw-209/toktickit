@@ -444,3 +444,81 @@ export async function updateAdminUser(id: number, userData: Partial<UserAdminDat
   return res.json();
 }
 
+
+// ---------------------------------------------------------------------------
+// Lab 4 - Actions Taken Endpoints
+// ---------------------------------------------------------------------------
+
+export interface ActionTaken {
+  id: number;
+  ticketId: number;
+  performedById: number;
+  performedByName: string;
+  actionDateTime: string;
+  actionDescription: string;
+  result: string;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateActionTakenPayload {
+  actionDateTime?: string;
+  actionDescription: string;
+  result: string;
+  followUpRequired?: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+}
+
+export interface UpdateActionTakenPayload {
+  actionDateTime?: string;
+  actionDescription?: string;
+  result?: string;
+  followUpRequired?: boolean;
+  followUpNote?: string | null;
+  attachmentNotes?: string | null;
+  version: number;
+}
+
+export async function fetchActionsTaken(ticketId: number): Promise<ActionTaken[]> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/actions`, fetchOpts());
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error?.message || "Failed to fetch actions taken");
+  }
+  const data = await res.json();
+  return data.actions || [];
+}
+
+export async function createActionTaken(ticketId: number, payload: CreateActionTakenPayload): Promise<ActionTaken> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/actions`, fetchOpts({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }));
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error?.message || "Failed to create action taken");
+  }
+  return res.json();
+}
+
+export async function updateActionTaken(ticketId: number, actionId: number, payload: UpdateActionTakenPayload): Promise<ActionTaken> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/actions/${actionId}`, fetchOpts({
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }));
+  if (res.status === 409) {
+    throw new Error("Conflict: Resource was modified by another user. Please refresh and try again.");
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error?.message || "Failed to update action taken");
+  }
+  return res.json();
+}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ActionsTakenSection from "./ActionsTakenSection.js";
 import { useAuth } from "../context/AuthContext.js";
 import {
   Ticket,
@@ -482,7 +483,9 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
         </div>
       </div>
       
-      {/* Basic Mobile CSS adjustments */}
+<ActionsTakenSection ticketId={ticketId} />
+
+            {/* Basic Mobile CSS adjustments */}
       <style>{`
         @media (max-width: 768px) {
           .ticket-detail-grid {
