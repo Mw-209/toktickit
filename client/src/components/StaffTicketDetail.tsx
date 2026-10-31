@@ -483,7 +483,9 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
         </div>
       </div>
       
-      {/* Basic Mobile CSS adjustments */}
+<ActionsTakenSection ticketId={ticketId} />
+
+            {/* Basic Mobile CSS adjustments */}
       <style>{`
         @media (max-width: 768px) {
           .ticket-detail-grid {
