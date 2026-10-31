@@ -98,6 +98,8 @@ export interface Ticket {
   assignedToId?: number | null;
   assignedTo?: StaffAssignee | null;
   resolveIndicatedAt?: string | null;
+  requesterIndicatedResolved?: boolean;
+  version?: number;
   attachments: Attachment[];
   attachmentCount?: number;
   createdAt: string;
@@ -367,7 +369,7 @@ export async function fetchStaffTicketDetail(id: number): Promise<Ticket> {
   return res.json();
 }
 
-export async function updateTicketStatus(id: number, updates: { assignedToId?: number | null, itPriority?: string, currentStatus?: string }): Promise<Ticket> {
+export async function updateTicketStatus(id: number, updates: { assignedToId?: number | null, itPriority?: string, currentStatus?: string, version?: number }): Promise<Ticket> {
   const res = await fetch(`${API_URL}/api/staff/tickets/${id}`, fetchOpts({
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -376,6 +378,19 @@ export async function updateTicketStatus(id: number, updates: { assignedToId?: n
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.error?.message || "Failed to update ticket");
+  }
+  return res.json();
+}
+
+export async function patchTicketWorkflowStatus(ticketId: number, status: string, version?: number): Promise<any> {
+  const res = await fetch(`${API_URL}/api/tickets/${ticketId}/status`, fetchOpts({
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, version }),
+  }));
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || data.error?.message || "Failed to update status");
   }
   return res.json();
 }

@@ -188,6 +188,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
               !["RESOLVED", "CLOSED", "CANCELLED"].includes(ticket.currentStatus) && (
                 <button 
                   className="btn-zen-secondary" 
+                  data-testid="resolve-indication-btn"
                   onClick={handleIndicateResolved}
                   disabled={resolving}
                   style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem", color: "#0369a1", borderColor: "#bae6fd", backgroundColor: "#f0f9ff" }}
@@ -196,7 +197,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
                 </button>
               )
             )}
-            <span className={`zen-badge ${getStatusBadgeClass(ticket.currentStatus)}`}>
+            <span className={`zen-badge ${getStatusBadgeClass(ticket.currentStatus)}`} data-testid="ticket-status-badge">
               {ticket.currentStatus.replace("_", " ")}
             </span>
           </div>

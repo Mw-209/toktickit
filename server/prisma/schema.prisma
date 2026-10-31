@@ -67,6 +67,7 @@ model Ticket {
   userId             Int?
   assignedToId       Int?
   resolveIndicatedAt DateTime?
+  version            Int             @default(1)
   attachments        Attachment[]
   internalNotes      InternalNote[]
   publicComments     PublicComment[]

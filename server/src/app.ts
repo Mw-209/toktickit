@@ -907,13 +907,20 @@ app.get("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINIST
 app.patch("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), async (req: Request, res: Response) => {
   try {
     const ticketId = parseInt(req.params.id, 10);
-    const { assignedToId, itPriority, currentStatus } = req.body;
+    const { assignedToId, itPriority, currentStatus, status, version } = req.body;
+    const requestedStatus = currentStatus || status;
     const prisma = getPrisma();
 
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
 
-    const updateData: any = {};
+    if (version !== undefined && ticket.version !== Number(version)) {
+      return res.status(409).json({ error: "conflict", message: "Resource was modified by another user." });
+    }
+
+    const updateData: any = {
+      version: ticket.version + 1,
+    };
 
     if (assignedToId !== undefined) {
       if (assignedToId === null) {
@@ -934,24 +941,25 @@ app.patch("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINI
       updateData.itPriority = itPriority;
     }
 
-    if (currentStatus !== undefined) {
+    if (requestedStatus !== undefined) {
+      const normalized = requestedStatus.trim().toUpperCase().replace(/[\s-]+/g, "_");
       // BR-13: Status Transition Rules Validation
       const validTransitions: Record<string, string[]> = {
-        NEW: ["IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"],
-        OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"], // legacy OPEN support if needed
-        IN_PROGRESS: ["WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
-        WAITING_FOR_REQUESTER: ["IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"],
-        RESOLVED: ["REOPENED", "CLOSED"],
+        NEW: ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"],
+        OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
+        IN_PROGRESS: ["OPEN", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
+        WAITING_FOR_REQUESTER: ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"],
+        RESOLVED: ["REOPENED", "CLOSED", "CANCELLED"],
         CLOSED: ["REOPENED"],
-        REOPENED: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
+        REOPENED: ["OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
         CANCELLED: ["REOPENED"],
       };
 
       const allowed = validTransitions[ticket.currentStatus] || [];
-      if (!allowed.includes(currentStatus) && ticket.currentStatus !== currentStatus) {
-        return res.status(422).json({ error: { message: `Invalid status transition from ${ticket.currentStatus} to ${currentStatus}.` } });
+      if (!allowed.includes(normalized) && ticket.currentStatus !== normalized) {
+        return res.status(422).json({ error: { message: `Invalid status transition from ${ticket.currentStatus} to ${normalized}.` } });
       }
-      updateData.currentStatus = currentStatus;
+      updateData.currentStatus = normalized;
     }
 
     const updatedTicket = await prisma.ticket.update({
@@ -1090,7 +1098,11 @@ app.post("/api/tickets/:id/notes", requireAuth, requireRole("IT_STAFF", "ADMINIS
 });
 
 // POST /api/tickets/:id/resolve-indication: Requester indicates ticket appears resolved
-app.post("/api/tickets/:id/resolve-indication", requireAuth, requireRole("REQUESTER"), async (req: Request, res: Response) => {
+app.post(
+  ["/api/tickets/:id/resolve-indication", "/api/tickets/:ticketId/resolve-indication", "/api/tickets/:id/requester-resolved", "/api/tickets/:ticketId/requester-resolved"],
+  requireAuth,
+  requireRole("REQUESTER"),
+  async (req: Request, res: Response) => {
   try {
     const ticketId = parseInt(req.params.id, 10);
     const sessionUser = req.user as any;
@@ -1116,7 +1128,7 @@ app.post("/api/tickets/:id/resolve-indication", requireAuth, requireRole("REQUES
       data: { resolveIndicatedAt: new Date() },
     });
 
-    return res.status(200).json({ ticketId: updated.id, resolveIndicatedAt: updated.resolveIndicatedAt });
+    return res.status(200).json({ ticketId: updated.id, resolveIndicatedAt: updated.resolveIndicatedAt, requesterIndicatedResolved: true, currentStatus: updated.currentStatus });
   } catch (error) {
     console.error("Failed to indicate resolved:", error);
     return res.status(500).json({ error: { message: "Internal Server Error" } });
@@ -1393,6 +1405,113 @@ app.get(
       });
     } catch (error: any) {
       console.error("Failed to fetch Actions Taken:", error);
+      return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Lab 4: Ticket Workflow Endpoints (Issue 4)
+// ---------------------------------------------------------------------------
+
+function normalizeWorkflowStatus(status: string): string {
+  if (!status) return "";
+  const s = status.trim().toUpperCase().replace(/[\s-]+/g, "_");
+  if (s === "INPROGRESS") return "IN_PROGRESS";
+  if (s === "WAITINGFORREQUESTER") return "WAITING_FOR_REQUESTER";
+  return s;
+}
+
+const LAB4_TICKET_TRANSITIONS: Record<string, string[]> = {
+  NEW: ["OPEN", "CANCELLED"],
+  OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "CANCELLED"],
+  IN_PROGRESS: ["OPEN", "WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"],
+  WAITING_FOR_REQUESTER: ["OPEN", "IN_PROGRESS", "RESOLVED", "CANCELLED"],
+  RESOLVED: ["CLOSED", "CANCELLED", "REOPENED"],
+  CLOSED: ["REOPENED"],
+  CANCELLED: ["REOPENED"],
+  REOPENED: ["OPEN", "IN_PROGRESS", "CANCELLED"],
+};
+
+// PATCH /api/tickets/:id/status: Transition Ticket Status
+app.patch(
+  ["/api/tickets/:ticketId/status", "/api/tickets/:id/status"],
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId || req.params.id, 10);
+      if (isNaN(ticketId)) {
+        return res.status(400).json({ error: "INVALID_ID", message: "Invalid ticket ID." });
+      }
+
+      // Requesters cannot transition ticket status directly (Resolution Gate)
+      if (req.user!.role === "REQUESTER") {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message: "Requesters are not permitted to change ticket status directly.",
+        });
+      }
+
+      if (req.user!.role !== "IT_STAFF" && req.user!.role !== "ADMINISTRATOR") {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message: "You do not have permission to change ticket status.",
+        });
+      }
+
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        return res.status(404).json({ error: "NOT_FOUND", message: "Ticket not found." });
+      }
+
+      const { status, currentStatus, version } = req.body;
+      const rawStatus = status || currentStatus;
+      if (!rawStatus || typeof rawStatus !== "string") {
+        return res.status(400).json({ error: "INVALID_STATUS", message: "Status is required." });
+      }
+
+      // Optimistic concurrency check
+      if (version !== undefined && ticket.version !== Number(version)) {
+        return res.status(409).json({
+          error: "conflict",
+          message: "Resource was modified by another user.",
+        });
+      }
+
+      const current = normalizeWorkflowStatus(ticket.currentStatus);
+      const target = normalizeWorkflowStatus(rawStatus);
+
+      const validStatuses = ["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED", "REOPENED"];
+      if (!validStatuses.includes(target)) {
+        return res.status(400).json({ error: "INVALID_STATUS", message: `Invalid status: ${rawStatus}` });
+      }
+
+      const allowed = LAB4_TICKET_TRANSITIONS[current] || [];
+      if (!allowed.includes(target) && current !== target) {
+        return res.status(400).json({
+          error: "INVALID_TRANSITION",
+          message: `Invalid status transition from ${current} to ${target}.`,
+        });
+      }
+
+      const updated = await prisma.ticket.update({
+        where: { id: ticketId },
+        data: {
+          currentStatus: target,
+          version: ticket.version + 1,
+        },
+      });
+
+      return res.status(200).json({
+        id: updated.id,
+        status: updated.currentStatus,
+        currentStatus: updated.currentStatus,
+        version: updated.version,
+        updatedAt: updated.updatedAt,
+      });
+    } catch (error: any) {
+      console.error("Failed to transition ticket status:", error);
       return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
     }
   }
