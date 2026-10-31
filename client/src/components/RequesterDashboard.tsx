@@ -49,8 +49,12 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
       <div className="zen-container" data-testid="loading-state" style={{ paddingTop: "2rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: "1.75rem", color: "var(--color-primary-green)" }}>📊 Requester Dashboard</h1>
-            <p className="zen-meta" style={{ margin: "0.25rem 0 0 0" }}>Overview of your support requests.</p>
+            <h1 style={{ margin: 0, fontSize: "1.875rem", fontWeight: 700, color: "var(--color-text-main, #1f2937)" }}>
+              Welcome, {user?.name ? user.name.split(" ")[0] : "Requester"}!
+            </h1>
+            <p className="zen-meta" style={{ margin: "0.25rem 0 0 0", color: "var(--color-text-muted)", fontSize: "0.95rem" }}>
+              Here's the latest on your requests.
+            </p>
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
@@ -74,8 +78,12 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: "1.75rem", color: "var(--color-primary-green)" }}>📊 My Support Dashboard</h1>
-          <p className="zen-meta" style={{ margin: "0.25rem 0 0 0" }}>Welcome back, {user.name}. Here is the current status of your tickets.</p>
+          <h1 style={{ margin: 0, fontSize: "1.875rem", fontWeight: 700, color: "var(--color-text-main, #1f2937)" }}>
+            Welcome, {user.name ? user.name.split(" ")[0] : "Requester"}!
+          </h1>
+          <p className="zen-meta" style={{ margin: "0.25rem 0 0 0", color: "var(--color-text-muted)", fontSize: "0.95rem" }}>
+            Here's the latest on your requests.
+          </p>
         </div>
         <div style={{ display: "flex", gap: "0.75rem" }}>
           <button
@@ -218,3 +226,4 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
     </div>
   );
 }
+
