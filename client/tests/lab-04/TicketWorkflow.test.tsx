@@ -70,7 +70,7 @@ describe("Ticket Workflow UI Tests (UI-WF-*)", () => {
 
     vi.mocked(api.fetchStaffAssignees).mockResolvedValue({
       assignees: [
-        { id: 10, name: "Alice Staff", email: "alice@test.com", role: "IT_STAFF" },
+        { id: 10, name: "Alice Staff", role: "IT_STAFF" },
       ],
     });
     vi.mocked(api.fetchComments).mockResolvedValue([]);
@@ -81,7 +81,7 @@ describe("Ticket Workflow UI Tests (UI-WF-*)", () => {
   // UI-WF-01: Status dropdown only shows permitted transitions
   // -------------------------------------------------------------------------
   it("UI-WF-01: Status dropdown only shows permitted transitions for Closed ticket (Closed -> In Progress not selectable)", async () => {
-    const closedTicket: api.Ticket = {
+    const closedTicket: any = {
       id: 1,
       ticketNumber: "TKT-2026-000001",
       summary: "Closed ticket summary",
@@ -96,7 +96,7 @@ describe("Ticket Workflow UI Tests (UI-WF-*)", () => {
       category: { id: 1, name: "Hardware", isActive: true },
       relatedSystem: { id: 1, name: "Laptop", isActive: true },
       requester: { id: 2, name: "Jennifer Anderson", email: "jennifer@test.com", role: "REQUESTER" },
-      assignedTo: { id: 10, name: "Alice Staff", email: "alice@test.com", role: "IT_STAFF" },
+      assignedTo: { id: 10, name: "Alice Staff", role: "IT_STAFF" },
       resolveIndicatedAt: null,
       attachments: [],
       createdAt: "2026-01-01T00:00:00Z",
@@ -125,7 +125,7 @@ describe("Ticket Workflow UI Tests (UI-WF-*)", () => {
   });
 
   it("UI-WF-01b: Status dropdown only shows permitted transitions for New ticket", async () => {
-    const newTicket: api.Ticket = {
+    const newTicket: any = {
       id: 2,
       ticketNumber: "TKT-2026-000002",
       summary: "New ticket summary",
@@ -171,7 +171,7 @@ describe("Ticket Workflow UI Tests (UI-WF-*)", () => {
   // UI-WF-02: Successful status change refreshes displayed status
   // -------------------------------------------------------------------------
   it("UI-WF-02: Successful status change refreshes displayed status badge immediately", async () => {
-    const initialTicket: api.Ticket = {
+    const initialTicket: any = {
       id: 3,
       ticketNumber: "TKT-2026-000003",
       summary: "Ticket to update",
@@ -193,7 +193,7 @@ describe("Ticket Workflow UI Tests (UI-WF-*)", () => {
       updatedAt: "2026-01-01T00:00:00Z",
     };
 
-    const updatedTicket: api.Ticket = {
+    const updatedTicket: any = {
       ...initialTicket,
       currentStatus: "OPEN",
       version: 2,
@@ -227,7 +227,7 @@ describe("Ticket Workflow UI Tests (UI-WF-*)", () => {
   // UI-WF-03: Requester "appears resolved" button does not change status badge
   // -------------------------------------------------------------------------
   it("UI-WF-03: Requester 'appears resolved' button does not change status badge", async () => {
-    const openTicket: api.Ticket = {
+    const openTicket: any = {
       id: 4,
       ticketNumber: "TKT-2026-000004",
       summary: "Requester ticket",
@@ -249,7 +249,7 @@ describe("Ticket Workflow UI Tests (UI-WF-*)", () => {
       updatedAt: "2026-01-01T00:00:00Z",
     };
 
-    const ticketWithIndication: api.Ticket = {
+    const ticketWithIndication: any = {
       ...openTicket,
       resolveIndicatedAt: "2026-10-31T15:00:00.000Z",
     };
@@ -291,7 +291,7 @@ describe("Ticket Workflow UI Tests (UI-WF-*)", () => {
 
   // Concurrency conflict feedback
   it("displays conflict error banner when 409 conflict is received", async () => {
-    const ticket: api.Ticket = {
+    const ticket: any = {
       id: 5,
       ticketNumber: "TKT-2026-000005",
       summary: "Conflict test",
