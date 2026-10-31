@@ -252,6 +252,79 @@ async function main() {
     });
   }
   console.log(`✓ Seeded ${users.length} Lab 3 Users (Requesters, IT Staff, Admin).`);
+  // ---------------------------------------------------------------------------
+  // Lab 4: Seed Actions Taken
+  // ---------------------------------------------------------------------------
+  const alice = await prisma.user.findUnique({ where: { email: "alice.staff@example.edu" } });
+  const bob = await prisma.user.findUnique({ where: { email: "bob.tech@example.edu" } });
+
+  const tkt6 = await prisma.ticket.findUnique({ where: { ticketNumber: "TKT-2026-000006" } });
+  const tkt7 = await prisma.ticket.findUnique({ where: { ticketNumber: "TKT-2026-000007" } });
+  const tkt8 = await prisma.ticket.findUnique({ where: { ticketNumber: "TKT-2026-000008" } });
+
+  if (tkt6 && alice && bob) {
+    const existingActions = await prisma.actionTaken.findMany({ where: { ticketId: tkt6.id } });
+    if (existingActions.length === 0) {
+      await prisma.actionTaken.create({
+        data: {
+          ticketId: tkt6.id,
+          performedById: alice.id,
+          actionDateTime: new Date(Date.now() - 3600 * 1000 * 24),
+          actionDescription: "Checked application crash logs in production environment.",
+          result: "Identified memory leak caused by unclosed database connections.",
+          followUpRequired: true,
+          followUpNote: "Schedule patch deployment during off-peak maintenance window.",
+          attachmentNotes: "See error_stack_trace.log",
+        },
+      });
+      await prisma.actionTaken.create({
+        data: {
+          ticketId: tkt6.id,
+          performedById: bob.id,
+          actionDateTime: new Date(),
+          actionDescription: "Applied hotfix v1.4.2 to LEB2 application container.",
+          result: "Crash resolved; smoke test passed without memory leaks.",
+          followUpRequired: false,
+        },
+      });
+    }
+  }
+
+  if (tkt7 && alice) {
+    const existingActions = await prisma.actionTaken.findMany({ where: { ticketId: tkt7.id } });
+    if (existingActions.length === 0) {
+      await prisma.actionTaken.create({
+        data: {
+          ticketId: tkt7.id,
+          performedById: alice.id,
+          actionDateTime: new Date(),
+          actionDescription: "Inspected Wi-Fi access point logs for intermittent drops.",
+          result: "Found signal interference on channel 6.",
+          followUpRequired: true,
+          followUpNote: "Reconfigure AP to use dynamic channel selection.",
+          attachmentNotes: "wifi_signal_heatmap.png",
+        },
+      });
+    }
+  }
+
+  if (tkt8 && bob) {
+    const existingActions = await prisma.actionTaken.findMany({ where: { ticketId: tkt8.id } });
+    if (existingActions.length === 0) {
+      await prisma.actionTaken.create({
+        data: {
+          ticketId: tkt8.id,
+          performedById: bob.id,
+          actionDateTime: new Date(),
+          actionDescription: "Verified VPN credentials and renewed user certificate.",
+          result: "User successfully connected to campus VPN without error 809.",
+          followUpRequired: false,
+        },
+      });
+    }
+  }
+  console.log("✓ Seeded Lab 4 Actions Taken (0, 1, and multiple per ticket).");
+
   console.log(`  Default password for all seeded users: "${initialPassword}" (must change on first login)`);
 }
 
