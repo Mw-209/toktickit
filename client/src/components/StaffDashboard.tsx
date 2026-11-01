@@ -243,48 +243,77 @@ export default function StaffDashboard({ onNavigate }: StaffDashboardProps) {
         </div>
 
         {data?.recentTickets && data.recentTickets.length > 0 ? (
-          <div style={{ overflowX: "auto" }}>
-            <table className="zen-table" style={{ width: "100%" }}>
-              <thead>
-                <tr>
-                  <th>Ticket No.</th>
-                  <th>Summary</th>
-                  <th>Category</th>
-                  <th>Status</th>
-                  <th>Owner</th>
-                  <th>Updated</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.recentTickets.map((t: Ticket) => (
-                  <tr key={t.id}>
-                    <td style={{ fontWeight: 600, color: "var(--color-primary-green)" }}>{t.ticketNumber}</td>
-                    <td>{t.summary}</td>
-                    <td>{t.category?.name || "—"}</td>
-                    <td>
-                      <span className={`zen-badge ${getStatusClass(t.currentStatus)}`}>
-                        {t.currentStatus.replace("_", " ")}
-                      </span>
-                    </td>
-                    <td>{t.assignedTo?.name || "Unassigned"}</td>
-                    <td style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
-                      {new Date(t.updatedAt).toLocaleDateString("th-TH")}
-                    </td>
-                    <td>
-                      <button
-                        className="btn-zen-secondary"
-                        onClick={() => onNavigate("staff-ticket-detail", { ticketId: t.id })}
-                        style={{ fontSize: "0.8rem", padding: "0.25rem 0.6rem" }}
-                      >
-                        View
-                      </button>
-                    </td>
+          <>
+            <div className="zen-table-desktop" style={{ overflowX: "auto", width: "100%" }}>
+              <table className="zen-table" style={{ width: "100%" }}>
+                <thead>
+                  <tr>
+                    <th>Ticket No.</th>
+                    <th>Summary</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Owner</th>
+                    <th>Updated</th>
+                    <th>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {data.recentTickets.map((t: Ticket) => (
+                    <tr key={t.id}>
+                      <td style={{ fontWeight: 600, color: "var(--color-primary-green)" }}>{t.ticketNumber}</td>
+                      <td>{t.summary}</td>
+                      <td>{t.category?.name || "—"}</td>
+                      <td>
+                        <span className={`zen-badge ${getStatusClass(t.currentStatus)}`}>
+                          {t.currentStatus.replace("_", " ")}
+                        </span>
+                      </td>
+                      <td>{t.assignedTo?.name || "Unassigned"}</td>
+                      <td style={{ fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
+                        {new Date(t.updatedAt).toLocaleDateString("th-TH")}
+                      </td>
+                      <td>
+                        <button
+                          className="btn-zen-secondary"
+                          onClick={() => onNavigate("staff-ticket-detail", { ticketId: t.id })}
+                          style={{ fontSize: "0.8rem", padding: "0.25rem 0.6rem" }}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="zen-mobile-cards">
+              {data.recentTickets.map((t: Ticket) => (
+                <div
+                  key={t.id}
+                  className="zen-mobile-card"
+                  style={{ cursor: "pointer", marginBottom: "0.6rem", padding: "0.85rem" }}
+                  onClick={() => onNavigate("staff-ticket-detail", { ticketId: t.id })}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.35rem" }}>
+                    <span style={{ fontWeight: 700, color: "var(--color-primary-green)", fontSize: "0.85rem", fontFamily: "monospace" }}>
+                      {t.ticketNumber}
+                    </span>
+                    <span className={`zen-badge ${getStatusClass(t.currentStatus)}`}>
+                      {t.currentStatus.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.4rem", wordBreak: "break-word" }}>
+                    {t.summary}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
+                    <span>{t.category?.name || "General"} · {new Date(t.updatedAt).toLocaleDateString("th-TH")}</span>
+                    <span style={{ color: "var(--color-primary-green)", fontWeight: 600, fontSize: "0.8rem" }}>View →</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <p className="zen-meta" style={{ textAlign: "center", margin: "1.5rem 0" }}>
             No tickets updated recently.

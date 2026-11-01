@@ -433,7 +433,13 @@ app.get("/api/tickets", requireAuth, requireRole("REQUESTER"), async (req: Reque
     }
 
     if (status && typeof status === "string" && status !== "ALL") {
-      where.currentStatus = status;
+      if (status === "OPEN") {
+        where.currentStatus = { notIn: ["RESOLVED", "CLOSED", "CANCELLED"] };
+      } else if (status === "WAITING_FOR_REQUESTER") {
+        where.currentStatus = { in: ["WAITING_FOR_REQUESTER", "PENDING"] };
+      } else {
+        where.currentStatus = status;
+      }
     }
 
     if (search && typeof search === "string" && search.trim() !== "") {
@@ -530,8 +536,9 @@ app.get("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => 
     const sessionUser = await prisma.user.findUnique({ where: { id: userId } });
     const isLab3Owner = ticket.userId === userId;
     const isLegacyOwner = !!(ticket.requesterId && sessionUser && ticket.requester?.email === sessionUser.email);
+    const isITStaff = sessionUser?.role === "IT_STAFF" || sessionUser?.role === "ADMINISTRATOR";
 
-    if (!isLab3Owner && !isLegacyOwner) {
+    if (!isLab3Owner && !isLegacyOwner && !isITStaff) {
       return res.status(403).json({
         error: {
           code: "FORBIDDEN",

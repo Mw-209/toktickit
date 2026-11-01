@@ -3,31 +3,29 @@
 **Author:** Kusumas Kerdbankram — 67070505209 — GitHub: @Mw-209  
 **Peer reviewer:** Thitikan Tiranobpakan — 67070505213 — GitHub: @thitikan4
 
+---
+
 ## Pull Requests I authored (reviewed by my partner)
 
-| PR | Branch | Reviewer verdict |
-|----|--------|------------------|
-| _(pending)_ | `feature/lab4-1-spec-and-test-plan` | Pending |
-| _(pending)_ | `feature/lab4-2-actions-taken-foundation` | Pending |
-| _(pending)_ | `feature/lab4-3-actions-taken-ui` | Pending |
-| _(pending)_ | `feature/lab4-4-ticket-workflow` | Pending |
-| _(pending)_ | `feature/lab4-5-role-dashboards` | Pending |
-| _(pending)_ | `feature/lab4-6-final-hardening` | Pending |
+| PR | Branch | Reviewer verdict | Link |
+|----|--------|------------------|------|
+| #53 | `feature/lab4-1-spec-and-test-plan` | Approved | [PR #53](https://github.com/Mw-209/toktickit/pull/53) |
+| #54 | `feature/lab4-2-actions-taken-foundation` | Approved | [PR #54](https://github.com/Mw-209/toktickit/pull/54) |
+| #55 | `feature/lab4-3-actions-taken-ui` | Approved | [PR #55](https://github.com/Mw-209/toktickit/pull/55) |
+| #56 | `feature/lab4-4-ticket-workflow` | Approved | [PR #56](https://github.com/Mw-209/toktickit/pull/56) |
+| #57 | `feature/lab4-5-role-dashboards` | Approved | [PR #57](https://github.com/Mw-209/toktickit/pull/57) |
+| #58 | `feature/lab4-6-final-hardening` | Approved | [PR #58](https://github.com/Mw-209/toktickit/pull/58) |
+
 
 **Reviewer comment I received:**
-
-> _(to be filled in after peer review)_
+> [ Great!, Well done!, You should merge to lab4-staging not main, Everything looks good to me., Good job!, Good]
 
 **How I responded:**
-
-> _(to be filled in after peer review)_
+> [ Thanks!!!, Thank you for taking the time to review this!, ok, Thanks a lot for checking!, Appreciate it!, Thank you 🙏]
 
 ## Pull Requests I reviewed for my partner
-
 **My comment:**
-
-> _(to be filled in after reviewing partner's PRs)_
+> [Good, Everything looks good to me., Approved! Everything looks good, Good, All good!, LGTM!]
 
 **Partner's response:**
-
-> _(to be filled in after reviewing partner's PRs)_
+> [Thanks, Thanks for reviewing!, Thank you!, Thanks for checking!, Appreciate it!, Thank you 🙏]

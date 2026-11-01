@@ -110,7 +110,7 @@ describe("StaffDashboard Component (Lab 4 Issue 5)", () => {
     // Check recent actions and recent tickets render
     expect(screen.getByText("Reset user credentials and configured MFA.")).toBeInTheDocument();
     expect(screen.getByText("VPN connection issue")).toBeInTheDocument();
-    expect(screen.getByText("Printer not responding")).toBeInTheDocument();
+    expect(screen.getAllByText("Printer not responding")[0]).toBeInTheDocument();
   });
 
   // UI-SD-02: Loading state shown while fetching

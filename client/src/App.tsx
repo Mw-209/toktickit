@@ -23,6 +23,8 @@ export default function App() {
   const [relatedSystems, setRelatedSystems] = useState<RelatedSystem[]>([]);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
+  const [requesterTicketsFilters, setRequesterTicketsFilters] = useState<any>(undefined);
+  const [staffQueueFilters, setStaffQueueFilters] = useState<any>(undefined);
 
   useEffect(() => {
     fetchCategories().then(setCategories).catch(() => {});
@@ -30,9 +32,42 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (user && currentPage !== "ticket-detail" && currentPage !== "staff-ticket-detail") {
-      if (user.role === "REQUESTER") setCurrentPage("requester-dashboard");
-      else if (user.role === "IT_STAFF" || user.role === "ADMINISTRATOR") setCurrentPage("staff-dashboard");
+    if (!user) {
+      setCurrentPage("my-tickets");
+      setSelectedTicketId(null);
+      return;
+    }
+    if (user.role === "REQUESTER") {
+      if (
+        currentPage === "staff-queue" ||
+        currentPage === "staff-dashboard" ||
+        currentPage === "staff-ticket-detail" ||
+        currentPage === "admin-users"
+      ) {
+        setCurrentPage("requester-dashboard");
+      } else if (
+        currentPage !== "ticket-detail" &&
+        currentPage !== "create-ticket" &&
+        currentPage !== "my-tickets"
+      ) {
+        setCurrentPage("requester-dashboard");
+      }
+    } else if (user.role === "IT_STAFF" || user.role === "ADMINISTRATOR") {
+      if (
+        currentPage === "requester-dashboard" ||
+        currentPage === "my-tickets" ||
+        currentPage === "create-ticket"
+      ) {
+        setCurrentPage("staff-dashboard");
+      } else if (currentPage === "ticket-detail") {
+        setCurrentPage(selectedTicketId ? "staff-ticket-detail" : "staff-queue");
+      } else if (
+        currentPage !== "staff-queue" &&
+        currentPage !== "staff-ticket-detail" &&
+        currentPage !== "admin-users"
+      ) {
+        setCurrentPage("staff-dashboard");
+      }
     }
   }, [user]);
 
@@ -69,10 +104,16 @@ export default function App() {
 
   const handleViewTicket = (ticketId: number) => {
     setSelectedTicketId(ticketId);
-    setCurrentPage("ticket-detail");
+    if (user?.role === "IT_STAFF" || user?.role === "ADMINISTRATOR") {
+      setCurrentPage("staff-ticket-detail");
+    } else {
+      setCurrentPage("ticket-detail");
+    }
   };
 
   const handleNavigate = (page: Page) => {
+    if (page === "my-tickets") setRequesterTicketsFilters(undefined);
+    if (page === "staff-queue") setStaffQueueFilters(undefined);
     setCurrentPage(page);
   };
 
@@ -88,12 +129,15 @@ export default function App() {
         )}
 
         {/* Dashboards (Issue 5) */}
-        {currentPage === "staff-dashboard" && (
+        {currentPage === "staff-dashboard" && (user.role === "IT_STAFF" || user.role === "ADMINISTRATOR") && (
           <StaffDashboard
             onNavigate={(page, params) => {
               if (page === "staff-ticket-detail" && params?.ticketId) {
                 setSelectedTicketId(params.ticketId);
                 setCurrentPage("staff-ticket-detail");
+              } else if (page === "staff-queue") {
+                setStaffQueueFilters(params);
+                setCurrentPage("staff-queue");
               } else {
                 setCurrentPage(page as Page);
               }
@@ -101,12 +145,15 @@ export default function App() {
           />
         )}
 
-        {currentPage === "requester-dashboard" && (
+        {currentPage === "requester-dashboard" && user.role === "REQUESTER" && (
           <RequesterDashboard
             onNavigate={(page, params) => {
               if (page === "ticket-detail" && (params?.ticketId || params?.id)) {
                 setSelectedTicketId(params.ticketId || params.id);
                 setCurrentPage("ticket-detail");
+              } else if (page === "my-tickets") {
+                setRequesterTicketsFilters(params);
+                setCurrentPage("my-tickets");
               } else {
                 setCurrentPage(page as Page);
               }
@@ -114,15 +161,16 @@ export default function App() {
           />
         )}
 
-        {currentPage === "my-tickets" && (
+        {currentPage === "my-tickets" && user.role === "REQUESTER" && (
           <MyTicketsDashboard
             onViewTicket={handleViewTicket}
             onCreateTicket={() => setCurrentPage("create-ticket")}
             refreshKey={dashboardRefreshKey}
+            initialFilters={requesterTicketsFilters}
           />
         )}
 
-        {currentPage === "create-ticket" && (
+        {currentPage === "create-ticket" && user.role === "REQUESTER" && (
           <CreateTicketForm
             categories={categories}
             relatedSystems={relatedSystems}
@@ -131,8 +179,9 @@ export default function App() {
           />
         )}
 
-        {currentPage === "staff-queue" && (
+        {currentPage === "staff-queue" && (user.role === "IT_STAFF" || user.role === "ADMINISTRATOR") && (
           <StaffTicketQueue
+            initialFilters={staffQueueFilters}
             onNavigate={(page, params) => {
               if (page === "staff-ticket-detail" && params?.ticketId) {
                 setSelectedTicketId(params.ticketId);
@@ -144,30 +193,30 @@ export default function App() {
           />
         )}
 
-        {currentPage === "staff-ticket-detail" && selectedTicketId && (
+        {currentPage === "staff-ticket-detail" && selectedTicketId && (user.role === "IT_STAFF" || user.role === "ADMINISTRATOR") && (
           <StaffTicketDetail
             ticketId={selectedTicketId}
             onBack={() => setCurrentPage("staff-queue")}
           />
         )}
 
-        {currentPage === "ticket-detail" && (
+        {currentPage === "ticket-detail" && user.role === "REQUESTER" && (
           selectedTicketId ? (
             <TicketDetailView 
               ticketId={selectedTicketId} 
-              onBack={() => setCurrentPage(user.role === "REQUESTER" ? "my-tickets" : "staff-queue")} 
+              onBack={() => setCurrentPage("my-tickets")} 
             />
           ) : (
             <div className="zen-alert zen-alert-danger" style={{ margin: "2rem auto", maxWidth: "600px", textAlign: "center" }}>
               <p style={{ margin: "0 0 1rem 0" }}>No ticket selected.</p>
-              <button className="btn-zen-secondary" onClick={() => setCurrentPage(user.role === "REQUESTER" ? "my-tickets" : "staff-queue")}>
+              <button className="btn-zen-secondary" onClick={() => setCurrentPage("my-tickets")}>
                 Return to Tickets
               </button>
             </div>
           )
         )}
 
-        {currentPage === "admin-users" && (
+        {currentPage === "admin-users" && user.role === "ADMINISTRATOR" && (
           <AdminUserManagement />
         )}
 
