@@ -21,6 +21,7 @@ model User {
   publicComments     PublicComment[]
   assignedTickets    Ticket[]        @relation("AssignedTickets")
   tickets            Ticket[]        @relation("RequesterTickets")
+  actionsTaken       ActionTaken[]   @relation("PerformedActions")
 
   @@index([email])
   @@index([role, isActive])
@@ -66,9 +67,11 @@ model Ticket {
   userId             Int?
   assignedToId       Int?
   resolveIndicatedAt DateTime?
+  version            Int             @default(1)
   attachments        Attachment[]
   internalNotes      InternalNote[]
   publicComments     PublicComment[]
+  actionsTaken       ActionTaken[]
   assignedTo         User?           @relation("AssignedTickets", fields: [assignedToId], references: [id])
   category           Category        @relation(fields: [categoryId], references: [id])
   relatedSystem      RelatedSystem   @relation(fields: [relatedSystemId], references: [id])
@@ -119,6 +122,26 @@ model InternalNote {
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId, createdAt])
+}
+
+model ActionTaken {
+  id                Int       @id @default(autoincrement())
+  ticketId          Int
+  performedById     Int
+  actionDateTime    DateTime  @default(now())
+  actionDescription String
+  result            String
+  followUpRequired  Boolean   @default(false)
+  followUpNote      String?
+  attachmentNotes   String?
+  version           Int       @default(1)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  ticket            Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  performedBy       User      @relation("PerformedActions", fields: [performedById], references: [id])
+
+  @@index([ticketId, actionDateTime])
+  @@index([performedById])
 }
 
 enum Role {

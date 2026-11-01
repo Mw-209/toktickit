@@ -9,9 +9,11 @@ import { StaffTicketQueue } from "../../src/components/StaffTicketQueue.js";
 // Tests: UI-QUEUE-01 through UI-QUEUE-05
 // ---------------------------------------------------------------------------
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 vi.mock("../../src/api", () => ({
+  fetchCategories: vi.fn().mockResolvedValue([]),
+  fetchStaffAssignees: vi.fn().mockResolvedValue({ assignees: [] }),
   fetchStaffTickets: vi.fn().mockResolvedValue({
     tickets: [
       {
@@ -30,8 +32,6 @@ vi.mock("../../src/api", () => ({
     total: 2, page: 1, pageSize: 10, totalPages: 1,
     pagination: { total: 2, page: 1, pageSize: 10, totalPages: 1 },
   }),
-  fetchStaffAssignees: vi.fn().mockResolvedValue([]),
-  fetchCategories: vi.fn().mockResolvedValue([]),
 }));
 
 function renderQueue() {
@@ -43,8 +43,8 @@ describe("StaffTicketQueue Component (UI-QUEUE-*)", () => {
   it("UI-QUEUE-01: renders ticket data including Ticket Number and Summary", async () => {
     renderQueue();
     await waitFor(() => {
-      expect(screen.getByText("TKT-2026-000001")).toBeInTheDocument();
-      expect(screen.getByText("Laptop battery issue")).toBeInTheDocument();
+      expect(screen.getAllByText("TKT-2026-000001")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("Laptop battery issue")[0]).toBeInTheDocument();
     });
   });
 
@@ -52,8 +52,8 @@ describe("StaffTicketQueue Component (UI-QUEUE-*)", () => {
   it("UI-QUEUE-02: status badge renders ticket status text", async () => {
     renderQueue();
     await waitFor(() => {
-      expect(screen.getByText("NEW")).toBeInTheDocument();
-      expect(screen.getByText("IN_PROGRESS")).toBeInTheDocument();
+      expect(screen.getAllByText("NEW")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("IN_PROGRESS")[0]).toBeInTheDocument();
     });
   });
 

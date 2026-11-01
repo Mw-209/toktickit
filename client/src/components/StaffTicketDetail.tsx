@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import ActionsTakenSection from "./ActionsTakenSection.js";
 import { useAuth } from "../context/AuthContext.js";
 import {
   Ticket,
@@ -19,6 +20,28 @@ interface StaffTicketDetailProps {
   ticketId: number;
   onBack: () => void;
 }
+
+const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
+  NEW: ["OPEN", "CANCELLED"],
+  OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "CANCELLED"],
+  IN_PROGRESS: ["OPEN", "WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"],
+  WAITING_FOR_REQUESTER: ["OPEN", "IN_PROGRESS", "RESOLVED", "CANCELLED"],
+  RESOLVED: ["CLOSED", "CANCELLED", "REOPENED"],
+  CLOSED: ["REOPENED"],
+  CANCELLED: ["REOPENED"],
+  REOPENED: ["OPEN", "IN_PROGRESS", "CANCELLED"],
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  NEW: "New",
+  OPEN: "Open",
+  IN_PROGRESS: "In Progress",
+  WAITING_FOR_REQUESTER: "Waiting for Requester",
+  RESOLVED: "Resolved",
+  CLOSED: "Closed",
+  CANCELLED: "Cancelled",
+  REOPENED: "Reopened",
+};
 
 export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetailProps) {
   const { user } = useAuth();
@@ -90,6 +113,9 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
       if (currentStatus !== ticket?.currentStatus) {
         updates.currentStatus = currentStatus;
       }
+      if (ticket?.version !== undefined) {
+        updates.version = ticket.version;
+      }
 
       if (Object.keys(updates).length > 0) {
         const updated = await updateTicketStatus(ticketId, updates);
@@ -100,7 +126,11 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
         setCurrentStatus(updated.currentStatus);
       }
     } catch (err: any) {
-      setStatusError(err.message || "Failed to update ticket");
+      if (err.message && (err.message.includes("conflict") || err.message.includes("Resource was modified by another user"))) {
+        setStatusError("This Ticket was updated by someone else. Please refresh and try again.");
+      } else {
+        setStatusError(err.message || "Failed to update ticket");
+      }
     } finally {
       setSavingStatus(false);
     }
@@ -174,6 +204,10 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
     );
   }
 
+  const currentTicketStatus = ticket.currentStatus;
+  const permittedNext = ALLOWED_STATUS_TRANSITIONS[currentTicketStatus] || [];
+  const statusOptions = Array.from(new Set([currentTicketStatus, ...permittedNext]));
+
   const activeAttachments = ticket.attachments.filter(a => !a.isRemoved) || [];
   const removedAttachments = ticket.attachments.filter(a => a.isRemoved) || [];
 
@@ -191,7 +225,12 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
           {/* Section A: Ticket Information */}
           <div className="zen-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
-              <h2 style={{ margin: 0, fontSize: "1.5rem", color: "var(--color-primary-green)" }}>{ticket.ticketNumber}</h2>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                <h2 style={{ margin: 0, fontSize: "1.5rem", color: "var(--color-primary-green)" }}>{ticket.ticketNumber}</h2>
+                <span className={`zen-badge ${getStatusClass(ticket.currentStatus)}`} data-testid="ticket-status-badge">
+                  {STATUS_LABELS[ticket.currentStatus] || ticket.currentStatus.replace("_", " ")}
+                </span>
+              </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.25rem" }}>
                 <span style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
                   Created: {new Date(ticket.createdAt).toLocaleString("th-TH")}
@@ -394,20 +433,20 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
 
               {/* Status */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                <label className="zen-form-label">Status</label>
+                <label className="zen-form-label" htmlFor="status-select">Status</label>
                 <select 
+                  id="status-select"
+                  data-testid="status-select"
                   className="zen-select" 
                   value={currentStatus} 
                   onChange={e => setCurrentStatus(e.target.value)}
+                  disabled={permittedNext.length === 0 || savingStatus}
                 >
-                  <option value="NEW">New</option>
-                  <option value="OPEN">Open</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="WAITING_FOR_REQUESTER">Waiting for Requester</option>
-                  <option value="RESOLVED">Resolved</option>
-                  <option value="CLOSED">Closed</option>
-                  <option value="CANCELLED">Cancelled</option>
-                  <option value="REOPENED">Reopened</option>
+                  {statusOptions.map(st => (
+                    <option key={st} value={st}>
+                      {STATUS_LABELS[st] || st.replace(/_/g, " ")}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -482,7 +521,9 @@ export default function StaffTicketDetail({ ticketId, onBack }: StaffTicketDetai
         </div>
       </div>
       
-      {/* Basic Mobile CSS adjustments */}
+<ActionsTakenSection ticketId={ticketId} />
+
+            {/* Basic Mobile CSS adjustments */}
       <style>{`
         @media (max-width: 768px) {
           .ticket-detail-grid {

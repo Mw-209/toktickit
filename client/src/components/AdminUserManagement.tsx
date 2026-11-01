@@ -217,8 +217,8 @@ export function AdminUserManagement() {
               {modalError && <div className="zen-alert-error" style={{ marginBottom: '1rem' }}>{modalError}</div>}
               <form id="createForm" onSubmit={handleCreateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Name</label>
-                  <input required type="text" className="zen-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  <label htmlFor="create-name" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Name</label>
+                  <input id="create-name" required type="text" className="zen-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Email</label>
@@ -257,8 +257,8 @@ export function AdminUserManagement() {
               {modalError && <div className="zen-alert-error" style={{ marginBottom: '1rem' }}>{modalError}</div>}
               <form id="editForm" onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Name</label>
-                  <input required type="text" className="zen-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  <label htmlFor="edit-name" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Name</label>
+                  <input id="edit-name" required type="text" className="zen-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Email</label>

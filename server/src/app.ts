@@ -433,7 +433,13 @@ app.get("/api/tickets", requireAuth, requireRole("REQUESTER"), async (req: Reque
     }
 
     if (status && typeof status === "string" && status !== "ALL") {
-      where.currentStatus = status;
+      if (status === "OPEN") {
+        where.currentStatus = { notIn: ["RESOLVED", "CLOSED", "CANCELLED"] };
+      } else if (status === "WAITING_FOR_REQUESTER") {
+        where.currentStatus = { in: ["WAITING_FOR_REQUESTER", "PENDING"] };
+      } else {
+        where.currentStatus = status;
+      }
     }
 
     if (search && typeof search === "string" && search.trim() !== "") {
@@ -530,8 +536,9 @@ app.get("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => 
     const sessionUser = await prisma.user.findUnique({ where: { id: userId } });
     const isLab3Owner = ticket.userId === userId;
     const isLegacyOwner = !!(ticket.requesterId && sessionUser && ticket.requester?.email === sessionUser.email);
+    const isITStaff = sessionUser?.role === "IT_STAFF" || sessionUser?.role === "ADMINISTRATOR";
 
-    if (!isLab3Owner && !isLegacyOwner) {
+    if (!isLab3Owner && !isLegacyOwner && !isITStaff) {
       return res.status(403).json({
         error: {
           code: "FORBIDDEN",
@@ -907,13 +914,20 @@ app.get("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINIST
 app.patch("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), async (req: Request, res: Response) => {
   try {
     const ticketId = parseInt(req.params.id, 10);
-    const { assignedToId, itPriority, currentStatus } = req.body;
+    const { assignedToId, itPriority, currentStatus, status, version } = req.body;
+    const requestedStatus = currentStatus || status;
     const prisma = getPrisma();
 
     const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
     if (!ticket) return res.status(404).json({ error: { message: "Ticket not found." } });
 
-    const updateData: any = {};
+    if (version !== undefined && ticket.version !== Number(version)) {
+      return res.status(409).json({ error: "conflict", message: "Resource was modified by another user." });
+    }
+
+    const updateData: any = {
+      version: ticket.version + 1,
+    };
 
     if (assignedToId !== undefined) {
       if (assignedToId === null) {
@@ -934,24 +948,25 @@ app.patch("/api/staff/tickets/:id", requireAuth, requireRole("IT_STAFF", "ADMINI
       updateData.itPriority = itPriority;
     }
 
-    if (currentStatus !== undefined) {
+    if (requestedStatus !== undefined) {
+      const normalized = requestedStatus.trim().toUpperCase().replace(/[\s-]+/g, "_");
       // BR-13: Status Transition Rules Validation
       const validTransitions: Record<string, string[]> = {
-        NEW: ["IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"],
-        OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"], // legacy OPEN support if needed
-        IN_PROGRESS: ["WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
-        WAITING_FOR_REQUESTER: ["IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"],
-        RESOLVED: ["REOPENED", "CLOSED"],
+        NEW: ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"],
+        OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
+        IN_PROGRESS: ["OPEN", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
+        WAITING_FOR_REQUESTER: ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"],
+        RESOLVED: ["REOPENED", "CLOSED", "CANCELLED"],
         CLOSED: ["REOPENED"],
-        REOPENED: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
+        REOPENED: ["OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED"],
         CANCELLED: ["REOPENED"],
       };
 
       const allowed = validTransitions[ticket.currentStatus] || [];
-      if (!allowed.includes(currentStatus) && ticket.currentStatus !== currentStatus) {
-        return res.status(422).json({ error: { message: `Invalid status transition from ${ticket.currentStatus} to ${currentStatus}.` } });
+      if (!allowed.includes(normalized) && ticket.currentStatus !== normalized) {
+        return res.status(422).json({ error: { message: `Invalid status transition from ${ticket.currentStatus} to ${normalized}.` } });
       }
-      updateData.currentStatus = currentStatus;
+      updateData.currentStatus = normalized;
     }
 
     const updatedTicket = await prisma.ticket.update({
@@ -1090,7 +1105,11 @@ app.post("/api/tickets/:id/notes", requireAuth, requireRole("IT_STAFF", "ADMINIS
 });
 
 // POST /api/tickets/:id/resolve-indication: Requester indicates ticket appears resolved
-app.post("/api/tickets/:id/resolve-indication", requireAuth, requireRole("REQUESTER"), async (req: Request, res: Response) => {
+app.post(
+  ["/api/tickets/:id/resolve-indication", "/api/tickets/:ticketId/resolve-indication", "/api/tickets/:id/requester-resolved", "/api/tickets/:ticketId/requester-resolved"],
+  requireAuth,
+  requireRole("REQUESTER"),
+  async (req: Request, res: Response) => {
   try {
     const ticketId = parseInt(req.params.id, 10);
     const sessionUser = req.user as any;
@@ -1116,9 +1135,577 @@ app.post("/api/tickets/:id/resolve-indication", requireAuth, requireRole("REQUES
       data: { resolveIndicatedAt: new Date() },
     });
 
-    return res.status(200).json({ ticketId: updated.id, resolveIndicatedAt: updated.resolveIndicatedAt });
+    return res.status(200).json({ ticketId: updated.id, resolveIndicatedAt: updated.resolveIndicatedAt, requesterIndicatedResolved: true, currentStatus: updated.currentStatus });
   } catch (error) {
     console.error("Failed to indicate resolved:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Lab 4: Actions Taken Endpoints (Issue 2)
+// ---------------------------------------------------------------------------
+
+// POST /api/tickets/:id/actions: Create Action Taken
+app.post(
+  ["/api/tickets/:ticketId/actions", "/api/tickets/:id/actions"],
+  requireAuth,
+  requireRole("IT_STAFF", "ADMINISTRATOR"),
+  async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId || req.params.id, 10);
+      if (isNaN(ticketId)) {
+        return res.status(400).json({ error: { code: "INVALID_ID", message: "Invalid ticket ID." } });
+      }
+
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        return res.status(404).json({ error: { message: "Ticket not found." } });
+      }
+
+      const {
+        actionDateTime,
+        actionDescription,
+        result,
+        followUpRequired,
+        followUpNote,
+        attachmentNotes,
+      } = req.body;
+
+      if (!actionDescription || typeof actionDescription !== "string" || !actionDescription.trim()) {
+        return res.status(400).json({
+          error: "VALIDATION_FAILED",
+          message: "Action description is required.",
+          field: "actionDescription",
+        });
+      }
+
+      if (!result || typeof result !== "string" || !result.trim()) {
+        return res.status(400).json({
+          error: "VALIDATION_FAILED",
+          message: "Result is required.",
+          field: "result",
+        });
+      }
+
+      const isFollowUp = Boolean(followUpRequired);
+      if (isFollowUp && (!followUpNote || typeof followUpNote !== "string" || !followUpNote.trim())) {
+        return res.status(400).json({
+          error: "VALIDATION_FAILED",
+          message: "Follow-up note is required when follow-up is needed.",
+          field: "followUpNote",
+        });
+      }
+
+      const parsedDate = actionDateTime ? new Date(actionDateTime) : new Date();
+
+      const action = await prisma.actionTaken.create({
+        data: {
+          ticketId,
+          performedById: req.user!.userId,
+          actionDateTime: isNaN(parsedDate.getTime()) ? new Date() : parsedDate,
+          actionDescription: actionDescription.trim(),
+          result: result.trim(),
+          followUpRequired: isFollowUp,
+          followUpNote: isFollowUp ? followUpNote.trim() : (followUpNote ? String(followUpNote).trim() : null),
+          attachmentNotes: attachmentNotes ? String(attachmentNotes).trim() : null,
+          version: 1,
+        },
+        include: {
+          performedBy: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
+
+      return res.status(201).json({
+        id: action.id,
+        ticketId: action.ticketId,
+        performedById: action.performedById,
+        performedByName: action.performedBy.name,
+        actionDateTime: action.actionDateTime,
+        actionDescription: action.actionDescription,
+        result: action.result,
+        followUpRequired: action.followUpRequired,
+        followUpNote: action.followUpNote,
+        attachmentNotes: action.attachmentNotes,
+        version: action.version,
+        createdAt: action.createdAt,
+        updatedAt: action.updatedAt,
+      });
+    } catch (error: any) {
+      console.error("Failed to create Action Taken:", error);
+      return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
+    }
+  }
+);
+
+// PUT /api/tickets/:id/actions/:actionId: Update Action Taken
+app.put(
+  ["/api/tickets/:ticketId/actions/:actionId", "/api/tickets/:id/actions/:actionId"],
+  requireAuth,
+  requireRole("IT_STAFF", "ADMINISTRATOR"),
+  async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId || req.params.id, 10);
+      const actionId = parseInt(req.params.actionId, 10);
+      if (isNaN(ticketId) || isNaN(actionId)) {
+        return res.status(400).json({ error: { message: "Invalid ID parameter." } });
+      }
+
+      const prisma = getPrisma();
+      const action = await prisma.actionTaken.findFirst({
+        where: { id: actionId, ticketId },
+        include: { performedBy: { select: { id: true, name: true, email: true } } },
+      });
+
+      if (!action) {
+        return res.status(404).json({ error: { message: "Action Taken not found." } });
+      }
+
+      const {
+        actionDateTime,
+        actionDescription,
+        result,
+        followUpRequired,
+        followUpNote,
+        attachmentNotes,
+        version,
+      } = req.body;
+
+      // Optimistic concurrency check
+      if (version !== undefined && action.version !== Number(version)) {
+        return res.status(409).json({
+          error: "conflict",
+          message: "Resource was modified by another user.",
+        });
+      }
+
+      const isFollowUp = followUpRequired !== undefined ? Boolean(followUpRequired) : action.followUpRequired;
+      const effectiveNote = followUpNote !== undefined ? followUpNote : action.followUpNote;
+
+      if (isFollowUp && (!effectiveNote || typeof effectiveNote !== "string" || !effectiveNote.trim())) {
+        return res.status(400).json({
+          error: "VALIDATION_FAILED",
+          message: "Follow-up note is required when follow-up is needed.",
+          field: "followUpNote",
+        });
+      }
+
+      const updateData: any = {
+        version: action.version + 1,
+      };
+
+      if (actionDescription !== undefined) {
+        if (!actionDescription || typeof actionDescription !== "string" || !actionDescription.trim()) {
+          return res.status(400).json({ error: "VALIDATION_FAILED", message: "Action description cannot be empty.", field: "actionDescription" });
+        }
+        updateData.actionDescription = actionDescription.trim();
+      }
+
+      if (result !== undefined) {
+        if (!result || typeof result !== "string" || !result.trim()) {
+          return res.status(400).json({ error: "VALIDATION_FAILED", message: "Result cannot be empty.", field: "result" });
+        }
+        updateData.result = result.trim();
+      }
+
+      if (followUpRequired !== undefined) {
+        updateData.followUpRequired = isFollowUp;
+      }
+
+      if (followUpNote !== undefined) {
+        updateData.followUpNote = isFollowUp ? String(followUpNote).trim() : (followUpNote ? String(followUpNote).trim() : null);
+      }
+
+      if (attachmentNotes !== undefined) {
+        updateData.attachmentNotes = attachmentNotes ? String(attachmentNotes).trim() : null;
+      }
+
+      if (actionDateTime !== undefined) {
+        const parsed = new Date(actionDateTime);
+        if (!isNaN(parsed.getTime())) {
+          updateData.actionDateTime = parsed;
+        }
+      }
+
+      const updated = await prisma.actionTaken.update({
+        where: { id: actionId },
+        data: updateData,
+        include: { performedBy: { select: { id: true, name: true, email: true } } },
+      });
+
+      return res.status(200).json({
+        id: updated.id,
+        ticketId: updated.ticketId,
+        performedById: updated.performedById,
+        performedByName: updated.performedBy.name,
+        actionDateTime: updated.actionDateTime,
+        actionDescription: updated.actionDescription,
+        result: updated.result,
+        followUpRequired: updated.followUpRequired,
+        followUpNote: updated.followUpNote,
+        attachmentNotes: updated.attachmentNotes,
+        version: updated.version,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt,
+      });
+    } catch (error: any) {
+      console.error("Failed to update Action Taken:", error);
+      return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
+    }
+  }
+);
+
+// GET /api/tickets/:id/actions: List Actions Taken for a Ticket
+app.get(
+  ["/api/tickets/:ticketId/actions", "/api/tickets/:id/actions"],
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId || req.params.id, 10);
+      if (isNaN(ticketId)) {
+        return res.status(400).json({ error: { message: "Invalid ticket ID." } });
+      }
+
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        return res.status(404).json({ error: { message: "Ticket not found." } });
+      }
+
+      // Requester authorization check: Requester may only view Actions Taken on their own tickets
+      if (req.user!.role === "REQUESTER") {
+        if (ticket.userId !== req.user!.userId && ticket.requesterId !== req.user!.userId) {
+          return res.status(403).json({ error: "FORBIDDEN", message: "You do not have permission to view actions on this ticket." });
+        }
+      }
+
+      const actions = await prisma.actionTaken.findMany({
+        where: { ticketId },
+        include: {
+          performedBy: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+        orderBy: { actionDateTime: "desc" },
+      });
+
+      return res.status(200).json({
+        ticketId,
+        actions: actions.map((a) => ({
+          id: a.id,
+          ticketId: a.ticketId,
+          performedById: a.performedById,
+          performedByName: a.performedBy.name,
+          actionDateTime: a.actionDateTime,
+          actionDescription: a.actionDescription,
+          result: a.result,
+          followUpRequired: a.followUpRequired,
+          followUpNote: a.followUpNote,
+          attachmentNotes: a.attachmentNotes,
+          version: a.version,
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt,
+        })),
+      });
+    } catch (error: any) {
+      console.error("Failed to fetch Actions Taken:", error);
+      return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Lab 4: Ticket Workflow Endpoints (Issue 4)
+// ---------------------------------------------------------------------------
+
+function normalizeWorkflowStatus(status: string): string {
+  if (!status) return "";
+  const s = status.trim().toUpperCase().replace(/[\s-]+/g, "_");
+  if (s === "INPROGRESS") return "IN_PROGRESS";
+  if (s === "WAITINGFORREQUESTER") return "WAITING_FOR_REQUESTER";
+  return s;
+}
+
+const LAB4_TICKET_TRANSITIONS: Record<string, string[]> = {
+  NEW: ["OPEN", "CANCELLED"],
+  OPEN: ["IN_PROGRESS", "WAITING_FOR_REQUESTER", "CANCELLED"],
+  IN_PROGRESS: ["OPEN", "WAITING_FOR_REQUESTER", "RESOLVED", "CANCELLED"],
+  WAITING_FOR_REQUESTER: ["OPEN", "IN_PROGRESS", "RESOLVED", "CANCELLED"],
+  RESOLVED: ["CLOSED", "CANCELLED", "REOPENED"],
+  CLOSED: ["REOPENED"],
+  CANCELLED: ["REOPENED"],
+  REOPENED: ["OPEN", "IN_PROGRESS", "CANCELLED"],
+};
+
+// PATCH /api/tickets/:id/status: Transition Ticket Status
+app.patch(
+  ["/api/tickets/:ticketId/status", "/api/tickets/:id/status"],
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const ticketId = parseInt(req.params.ticketId || req.params.id, 10);
+      if (isNaN(ticketId)) {
+        return res.status(400).json({ error: "INVALID_ID", message: "Invalid ticket ID." });
+      }
+
+      // Requesters cannot transition ticket status directly (Resolution Gate)
+      if (req.user!.role === "REQUESTER") {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message: "Requesters are not permitted to change ticket status directly.",
+        });
+      }
+
+      if (req.user!.role !== "IT_STAFF" && req.user!.role !== "ADMINISTRATOR") {
+        return res.status(403).json({
+          error: "FORBIDDEN",
+          message: "You do not have permission to change ticket status.",
+        });
+      }
+
+      const prisma = getPrisma();
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        return res.status(404).json({ error: "NOT_FOUND", message: "Ticket not found." });
+      }
+
+      const { status, currentStatus, version } = req.body;
+      const rawStatus = status || currentStatus;
+      if (!rawStatus || typeof rawStatus !== "string") {
+        return res.status(400).json({ error: "INVALID_STATUS", message: "Status is required." });
+      }
+
+      // Optimistic concurrency check
+      if (version !== undefined && ticket.version !== Number(version)) {
+        return res.status(409).json({
+          error: "conflict",
+          message: "Resource was modified by another user.",
+        });
+      }
+
+      const current = normalizeWorkflowStatus(ticket.currentStatus);
+      const target = normalizeWorkflowStatus(rawStatus);
+
+      const validStatuses = ["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_REQUESTER", "RESOLVED", "CLOSED", "CANCELLED", "REOPENED"];
+      if (!validStatuses.includes(target)) {
+        return res.status(400).json({ error: "INVALID_STATUS", message: `Invalid status: ${rawStatus}` });
+      }
+
+      const allowed = LAB4_TICKET_TRANSITIONS[current] || [];
+      if (!allowed.includes(target) && current !== target) {
+        return res.status(400).json({
+          error: "INVALID_TRANSITION",
+          message: `Invalid status transition from ${current} to ${target}.`,
+        });
+      }
+
+      const updated = await prisma.ticket.update({
+        where: { id: ticketId },
+        data: {
+          currentStatus: target,
+          version: ticket.version + 1,
+        },
+      });
+
+      return res.status(200).json({
+        id: updated.id,
+        status: updated.currentStatus,
+        currentStatus: updated.currentStatus,
+        version: updated.version,
+        updatedAt: updated.updatedAt,
+      });
+    } catch (error: any) {
+      console.error("Failed to transition ticket status:", error);
+      return res.status(500).json({ error: { message: error.message || "Internal Server Error" } });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Lab 4: Role Dashboard Endpoints (Issue 5)
+// ---------------------------------------------------------------------------
+
+// GET /api/dashboard/requester: Requester Dashboard metrics
+app.get("/api/dashboard/requester", requireAuth, requireRole("REQUESTER"), async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const userId = req.user!.userId;
+
+    const sessionUser = await prisma.user.findUnique({ where: { id: userId } });
+    const legacyRequester = sessionUser ? await prisma.requesterUser.findUnique({ where: { email: sessionUser.email } }) : null;
+
+    const baseCondition: any = legacyRequester
+      ? { OR: [{ userId }, { requesterId: legacyRequester.id }] }
+      : { userId };
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [totalOpenTickets, waitingForRequester, recentlyUpdated, recentlyResolved, recentTickets] = await Promise.all([
+      prisma.ticket.count({
+        where: {
+          ...baseCondition,
+          currentStatus: { notIn: ["RESOLVED", "CLOSED", "CANCELLED"] },
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          ...baseCondition,
+          currentStatus: "WAITING_FOR_REQUESTER",
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          ...baseCondition,
+          updatedAt: { gte: sevenDaysAgo },
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          ...baseCondition,
+          currentStatus: "RESOLVED",
+          updatedAt: { gte: sevenDaysAgo },
+        },
+      }),
+      prisma.ticket.findMany({
+        where: baseCondition,
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        include: {
+          category: true,
+          relatedSystem: true,
+        },
+      }),
+    ]);
+
+    return res.status(200).json({
+      totalOpenTickets: totalOpenTickets ?? 0,
+      totalOpen: totalOpenTickets ?? 0,
+      waitingForRequester: waitingForRequester ?? 0,
+      recentlyUpdated: recentlyUpdated ?? 0,
+      recentlyResolved: recentlyResolved ?? 0,
+      recentTickets: recentTickets ?? [],
+    });
+  } catch (error: any) {
+    console.error("Failed to fetch requester dashboard:", error);
+    return res.status(500).json({ error: { message: "Internal Server Error" } });
+  }
+});
+
+// GET /api/dashboard/staff: IT Staff / Admin Dashboard metrics
+app.get("/api/dashboard/staff", requireAuth, requireRole("IT_STAFF", "ADMINISTRATOR"), async (req: Request, res: Response) => {
+  try {
+    const prisma = getPrisma();
+    const staffId = req.user!.userId;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      unassignedCount,
+      myTicketsCount,
+      statusGroups,
+      recentlyUpdatedCount,
+      myRecentActions,
+      recentTicketsList,
+    ] = await Promise.all([
+      prisma.ticket.count({
+        where: {
+          assignedToId: null,
+          currentStatus: { notIn: ["CLOSED", "CANCELLED"] },
+        },
+      }),
+      prisma.ticket.count({
+        where: {
+          assignedToId: staffId,
+          currentStatus: { notIn: ["CLOSED", "CANCELLED"] },
+        },
+      }),
+      prisma.ticket.groupBy({
+        by: ["currentStatus"],
+        _count: { _all: true },
+      }),
+      prisma.ticket.count({
+        where: {
+          updatedAt: { gte: sevenDaysAgo },
+        },
+      }),
+      prisma.actionTaken.findMany({
+        where: {
+          performedById: staffId,
+        },
+        orderBy: { actionDateTime: "desc" },
+        take: 5,
+        include: {
+          ticket: {
+            select: { id: true, ticketNumber: true, summary: true },
+          },
+        },
+      }),
+      prisma.ticket.findMany({
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        include: {
+          category: true,
+          requester: { select: { id: true, name: true, email: true } },
+          assignedTo: { select: { id: true, name: true, role: true } },
+        },
+      }),
+    ]);
+
+    const statusMap: Record<string, number> = {
+      New: 0,
+      Open: 0,
+      InProgress: 0,
+      WaitingForRequester: 0,
+      Resolved: 0,
+      Closed: 0,
+      Cancelled: 0,
+      Reopened: 0,
+      NEW: 0,
+      OPEN: 0,
+      IN_PROGRESS: 0,
+      WAITING_FOR_REQUESTER: 0,
+      RESOLVED: 0,
+      CLOSED: 0,
+      CANCELLED: 0,
+      REOPENED: 0,
+    };
+
+    for (const group of statusGroups) {
+      const s = group.currentStatus;
+      const count = group._count._all;
+      if (s === "NEW") { statusMap.New = count; statusMap.NEW = count; }
+      else if (s === "OPEN") { statusMap.Open = count; statusMap.OPEN = count; }
+      else if (s === "IN_PROGRESS") { statusMap.InProgress = count; statusMap.IN_PROGRESS = count; }
+      else if (s === "WAITING_FOR_REQUESTER") { statusMap.WaitingForRequester = count; statusMap.WAITING_FOR_REQUESTER = count; }
+      else if (s === "RESOLVED") { statusMap.Resolved = count; statusMap.RESOLVED = count; }
+      else if (s === "CLOSED") { statusMap.Closed = count; statusMap.CLOSED = count; }
+      else if (s === "CANCELLED") { statusMap.Cancelled = count; statusMap.CANCELLED = count; }
+      else if (s === "REOPENED") { statusMap.Reopened = count; statusMap.REOPENED = count; }
+    }
+
+    const formattedActions = myRecentActions.map((a: any) => ({
+      actionId: a.id,
+      ticketId: a.ticketId,
+      ticketTitle: a.ticket?.summary || a.ticket?.ticketNumber || "",
+      ticketNumber: a.ticket?.ticketNumber || "",
+      actionDateTime: a.actionDateTime,
+      actionDescription: a.actionDescription,
+    }));
+
+    return res.status(200).json({
+      unassignedTickets: unassignedCount ?? 0,
+      unassignedCount: unassignedCount ?? 0,
+      myTickets: myTicketsCount ?? 0,
+      myTicketsCount: myTicketsCount ?? 0,
+      ticketsByStatus: statusMap,
+      recentlyUpdated: recentlyUpdatedCount ?? 0,
+      myRecentActions: formattedActions,
+      recentTickets: recentTicketsList,
+    });
+  } catch (error: any) {
+    console.error("Failed to fetch staff dashboard:", error);
     return res.status(500).json({ error: { message: "Internal Server Error" } });
   }
 });

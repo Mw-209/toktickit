@@ -26,3 +26,5 @@ server/uploads/
 # playwright
 test-results/
 playwright-report/
+# scratch
+artifacts/scratch/

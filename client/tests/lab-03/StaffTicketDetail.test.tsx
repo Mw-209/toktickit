@@ -9,7 +9,7 @@ import StaffTicketDetail from "../../src/components/StaffTicketDetail.js";
 // Tests: UI-SDETAIL-01 through UI-SDETAIL-05
 // ---------------------------------------------------------------------------
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 vi.mock("../../src/context/AuthContext.js", () => ({
   useAuth: () => ({
@@ -20,6 +20,7 @@ vi.mock("../../src/context/AuthContext.js", () => ({
 }));
 
 vi.mock("../../src/api.js", () => ({
+
   fetchStaffTicketDetail: vi.fn().mockResolvedValue({
     id: 1, ticketNumber: "TKT-2026-000001", summary: "Laptop battery drains",
     description: "Battery issue description", requestedPriority: "HIGH",
@@ -31,9 +32,9 @@ vi.mock("../../src/api.js", () => ({
     attachments: [],
   }),
   updateTicketStatus: vi.fn().mockResolvedValue({}),
-  fetchStaffAssignees: vi.fn().mockResolvedValue([
+  fetchStaffAssignees: vi.fn().mockResolvedValue({ assignees: [
     { id: 10, name: "Alice Staff", email: "alice@test.com", role: "IT_STAFF" },
-  ]),
+  ]}),
   fetchComments: vi.fn().mockResolvedValue([]),
   postComment: vi.fn().mockResolvedValue({
     id: 1, content: "test comment",
@@ -79,7 +80,7 @@ describe("StaffTicketDetail Component (UI-SDETAIL-*)", () => {
   it("UI-SDETAIL-04: Internal Notes section is visible for IT Staff role", async () => {
     renderDetail();
     await waitFor(() => {
-      expect(screen.getByText(/internal notes/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/internal notes/i)[0]).toBeInTheDocument();
     });
   });
 

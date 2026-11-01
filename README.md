@@ -6,11 +6,11 @@ TokTickIT is a full-stack IT service desk application for managing Account & Acc
 
 ## Tech Stack
 
-- **Frontend**: React + TypeScript + Vite + Bootstrap 5
+- **Frontend**: React + TypeScript + Vite + Zen Green Design System
 - **Backend**: Node.js + Express + TypeScript
 - **Database & ORM**: PostgreSQL + Prisma ORM
 - **Testing**: Vitest + React Testing Library (Frontend), Vitest + Supertest (Backend)
-- **E2E Testing**: Playwright
+- **E2E Testing**: Playwright (Desktop, Tablet, Mobile)
 
 ---
 
@@ -27,19 +27,30 @@ Before running the application, make sure you have installed:
 ```text
 toktickit/
 ├── client/               # React + TypeScript + Vite frontend
+│   ├── src/              # Components (Dashboards, Actions Taken, Tickets)
+│   └── tests/            # Vitest unit & component tests (lab-02, lab-03, lab-04)
 ├── server/               # Node.js + Express + Prisma backend
+│   ├── prisma/           # Schema & migrations (User, Ticket, ActionTaken)
+│   ├── src/              # Express REST APIs & middleware
+│   └── tests/            # Supertest API tests (lab-02, lab-03, lab-04)
 ├── e2e/                  # Playwright End-to-End tests
 │   ├── lab-02/
-│   └── lab-03/
-├── docs/                 # Lab documentation and peer review records
+│   ├── lab-03/
+│   └── lab-04/           # Dashboards, Actions Taken, Ticket Resolution
+├── docs/                 # Engineering contracts, specifications, and reviews
 │   ├── lab-01/
 │   ├── lab-02/
-│   └── lab-03/
-├── artifacts/            # Screenshots from E2E tests
+│   ├── lab-03/
+│   └── lab-04/           # specification.md, tests.md, ui-spec.md, api-spec.md, reviewer.md, ai-use.md
+├── artifacts/            # Full-page screenshots across viewports
 │   ├── lab-02/screenshots/
-│   └── lab-03/screenshots/
+│   ├── lab-03/screenshots/
+│   └── lab-04/screenshots/
+│       ├── staff-dashboard/
+│       ├── requester-dashboard/
+│       └── actions-taken/
 ├── .gitignore            # Git ignore configuration
-├── playwright.config.ts  # Playwright configuration
+├── playwright.config.ts  # Playwright multi-viewport configuration
 └── README.md             # Project setup and documentation
 ```
 
@@ -87,7 +98,8 @@ VITE_API_URL="http://localhost:3000"
 2. **Initialize Database with Prisma**
    ```bash
    cd server
-   npx prisma migrate dev --name init
+   npx prisma migrate deploy
+   npm run prisma:seed
    ```
 
 ---
@@ -116,16 +128,21 @@ VITE_API_URL="http://localhost:3000"
   ```bash
   cd server
   npm test
+  # Run Lab 4 specific API tests
+  npm test tests/lab-04
   ```
 
 - **Frontend Tests (React Testing Library + Vitest)**:
   ```bash
   cd client
   npm test
+  # Run Lab 4 specific UI component tests
+  npm test tests/lab-04
   ```
 
-- **E2E Tests (Playwright)**:
+- **E2E Tests (Playwright Multi-Viewport)**:
   ```bash
-  npx playwright test
+  # Run all Lab 4 E2E tests across Desktop, Tablet, and Mobile
+  npx playwright test e2e/lab-04
   ```
-  Screenshots will be saved to `artifacts/lab-02/screenshots/` and `artifacts/lab-03/screenshots/`.
+  Screenshots will be generated in `artifacts/lab-04/screenshots/`.

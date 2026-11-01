@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import ActionsTakenSection from "./ActionsTakenSection.js";
+import { useRequester } from "../context/RequesterContext.js";
 import { Ticket, Attachment, PublicComment, fetchTicketDetail, uploadAttachment, softRemoveAttachment, getAttachmentDownloadUrl, fetchComments, postComment, indicateTicketResolved } from "../api.js";
 
 interface TicketDetailViewProps {
@@ -7,6 +9,10 @@ interface TicketDetailViewProps {
 }
 
 export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewProps) {
+  let devRequesterId: number | undefined;
+  try {
+    devRequesterId = useRequester()?.selectedRequester?.id;
+  } catch {}
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,8 +40,12 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
     try {
       const data = await fetchTicketDetail(ticketId);
       setTicket(data);
-      const cData = await fetchComments(ticketId);
-      setComments(cData);
+      try {
+        const cData = await fetchComments(ticketId);
+        setComments(cData);
+      } catch {
+        setComments([]);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load ticket details");
     } finally {
@@ -71,7 +81,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
     setUploading(true);
     setUploadError(null);
     try {
-      await uploadAttachment(ticketId, file);
+      if (devRequesterId) { await (uploadAttachment as any)(ticketId, devRequesterId, file); } else { await uploadAttachment(ticketId, file); }
       await loadTicket(); // reload to get new attachment
     } catch (err: any) {
       setUploadError(err.message || "Failed to upload file");
@@ -91,7 +101,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
     setRemoving(true);
     setRemoveError(null);
     try {
-      await softRemoveAttachment(ticketId, removingAttachment.id, removalReason);
+      if (devRequesterId) { await (softRemoveAttachment as any)(ticketId, removingAttachment.id, devRequesterId, removalReason); } else { await softRemoveAttachment(ticketId, removingAttachment.id, removalReason); }
       setRemovingAttachment(null);
       setRemovalReason("");
       await loadTicket(); // reload to update attachment status
@@ -187,6 +197,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
               !["RESOLVED", "CLOSED", "CANCELLED"].includes(ticket.currentStatus) && (
                 <button 
                   className="btn-zen-secondary" 
+                  data-testid="resolve-indication-btn"
                   onClick={handleIndicateResolved}
                   disabled={resolving}
                   style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem", color: "#0369a1", borderColor: "#bae6fd", backgroundColor: "#f0f9ff" }}
@@ -195,7 +206,7 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
                 </button>
               )
             )}
-            <span className={`zen-badge ${getStatusBadgeClass(ticket.currentStatus)}`}>
+            <span className={`zen-badge ${getStatusBadgeClass(ticket.currentStatus)}`} data-testid="ticket-status-badge">
               {ticket.currentStatus.replace("_", " ")}
             </span>
           </div>
@@ -382,6 +393,9 @@ export default function TicketDetailView({ ticketId, onBack }: TicketDetailViewP
           </div>
         </div>
       </div>
+
+      {/* Actions Taken Section (Read-only for Requesters - Lab 4) */}
+      <ActionsTakenSection ticketId={ticketId} readOnly={true} />
 
       {/* Soft-Removal Modal */}
       {removingAttachment && (

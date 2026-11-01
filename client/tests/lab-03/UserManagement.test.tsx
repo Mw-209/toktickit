@@ -9,7 +9,7 @@ import { AdminUserManagement } from "../../src/components/AdminUserManagement.js
 // Tests: UI-ADMIN-01 through UI-ADMIN-05
 // ---------------------------------------------------------------------------
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 vi.mock("../../src/api", () => ({
   fetchAdminUsers: vi.fn().mockResolvedValue([
