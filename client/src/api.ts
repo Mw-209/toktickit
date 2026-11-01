@@ -202,6 +202,8 @@ export async function fetchTickets(
     categoryId?: number;
     priority?: string;
     status?: string;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
     page?: number;
     limit?: number;
   } = {}
@@ -212,6 +214,8 @@ export async function fetchTickets(
   if (params.categoryId) query.set("categoryId", String(params.categoryId));
   if (params.priority && params.priority !== "ALL") query.set("priority", params.priority);
   if (params.status && params.status !== "ALL") query.set("status", params.status);
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortOrder) query.set("sortOrder", params.sortOrder);
   if (params.page) query.set("page", String(params.page));
   if (params.limit) query.set("limit", String(params.limit));
 

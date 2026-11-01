@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext.js";
 import {
   fetchStaffTickets,
   fetchStaffAssignees,
@@ -20,21 +21,67 @@ const formatDate = (dateStr: string) => {
 
 interface Props {
   onNavigate: (page: string, params?: any) => void;
+  initialFilters?: {
+    filter?: string;
+    status?: string;
+    itPriority?: string;
+    categoryId?: string;
+    assignedToId?: string;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  };
 }
 
-export function StaffTicketQueue({ onNavigate }: Props) {
+export function StaffTicketQueue({ onNavigate, initialFilters }: Props) {
+  let user: any = null;
+  let isAuthorized = true;
+  try {
+    const auth = useAuth();
+    if (auth && auth.user) {
+      user = auth.user;
+      isAuthorized = auth.user.role === "IT_STAFF" || auth.user.role === "ADMINISTRATOR";
+    }
+  } catch {
+    isAuthorized = true;
+  }
+
   // Filters State
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [itPriority, setItPriority] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [assignedToId, setAssignedToId] = useState("");
+  const [status, setStatus] = useState(initialFilters?.status || "");
+  const [itPriority, setItPriority] = useState(initialFilters?.itPriority || "");
+  const [categoryId, setCategoryId] = useState(initialFilters?.categoryId || "");
+  const [assignedToId, setAssignedToId] = useState(
+    initialFilters?.filter === "unassigned"
+      ? "unassigned"
+      : initialFilters?.filter === "my-tickets" && user
+      ? String(user.id)
+      : initialFilters?.assignedToId || ""
+  );
 
   // Sort & Pagination State
-  const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState(initialFilters?.sortBy || "createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(initialFilters?.sortOrder || "desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    if (initialFilters) {
+      if (initialFilters.filter === "unassigned") {
+        setAssignedToId("unassigned");
+      } else if (initialFilters.filter === "my-tickets") {
+        if (user) setAssignedToId(String(user.id));
+      } else if (initialFilters.assignedToId !== undefined) {
+        setAssignedToId(initialFilters.assignedToId);
+      }
+
+      if (initialFilters.status !== undefined) setStatus(initialFilters.status);
+      if (initialFilters.itPriority !== undefined) setItPriority(initialFilters.itPriority);
+      if (initialFilters.categoryId !== undefined) setCategoryId(initialFilters.categoryId);
+      if (initialFilters.sortBy !== undefined) setSortBy(initialFilters.sortBy);
+      if (initialFilters.sortOrder !== undefined) setSortOrder(initialFilters.sortOrder);
+      setPage(1);
+    }
+  }, [initialFilters, user]);
 
   // Data State
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -48,6 +95,7 @@ export function StaffTicketQueue({ onNavigate }: Props) {
 
   // Load Meta Data
   useEffect(() => {
+    if (!isAuthorized) return;
     async function loadMeta() {
       try {
         const [catData, assignData] = await Promise.all([
@@ -65,6 +113,7 @@ export function StaffTicketQueue({ onNavigate }: Props) {
 
   // Load Tickets
   useEffect(() => {
+    if (!isAuthorized) return;
     async function loadTickets() {
       setLoading(true);
       setError(null);
@@ -152,7 +201,7 @@ export function StaffTicketQueue({ onNavigate }: Props) {
           <input
             type="text"
             className="zen-input"
-            placeholder="Search ticket number or summary…"
+            data-testid="staff-queue-search" placeholder="Search ticket number or summary…"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -231,6 +280,24 @@ export function StaffTicketQueue({ onNavigate }: Props) {
               </option>
             ))}
           </select>
+          {(search || status || itPriority || categoryId || assignedToId) && (
+            <button
+              className="zen-btn-secondary"
+              style={{ height: 36, whiteSpace: 'nowrap' }}
+              onClick={() => {
+                setSearch('');
+                setStatus('');
+                setItPriority('');
+                setCategoryId('');
+                setAssignedToId('');
+                setSortBy('createdAt');
+                setSortOrder('desc');
+                setPage(1);
+              }}
+            >
+              ✕ Clear
+            </button>
+          )}
         </div>
       </div>
 
@@ -293,7 +360,7 @@ export function StaffTicketQueue({ onNavigate }: Props) {
                     <td>
                       <button 
                         className="zen-btn-secondary" 
-                        onClick={() => onNavigate("staff-ticket-detail", { ticketId: t.id })}
+                        data-testid={`view-ticket-${t.ticketNumber}`} onClick={() => onNavigate("staff-ticket-detail", { ticketId: t.id })}
                         style={{ padding: "0.25rem 0.75rem", fontSize: "0.8rem" }}
                       >
                         View
@@ -321,8 +388,7 @@ export function StaffTicketQueue({ onNavigate }: Props) {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span className="zen-meta" style={{ fontSize: "0.8rem" }}>{formatDate(t.updatedAt)}</span>
                   <button 
-                    className="zen-btn-secondary" 
-                    onClick={() => onNavigate("staff-ticket-detail", { ticketId: t.id })}
+                    className="zen-btn-secondary" data-testid={`view-card-${t.ticketNumber}`} onClick={() => onNavigate("staff-ticket-detail", { ticketId: t.id })}
                   >
                     View Details
                   </button>

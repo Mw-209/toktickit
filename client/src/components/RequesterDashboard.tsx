@@ -266,7 +266,7 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
       <div className="zen-dashboard-grid">
         
         {/* Left Column: My Recent Tickets */}
-        <div className="zen-card" style={{ padding: "1.25rem" }}>
+        <div className="zen-card" style={{ padding: "1.25rem", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 600, color: "var(--color-primary-green)" }}>
               📋 My Recent Tickets
@@ -285,68 +285,100 @@ export default function RequesterDashboard({ onNavigate }: RequesterDashboardPro
               <p style={{ margin: 0 }}>No tickets recorded yet.</p>
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table className="zen-table" style={{ width: "100%", fontSize: "0.875rem" }}>
-                <thead>
-                  <tr>
-                    <th style={{ whiteSpace: "nowrap" }}>TICKET NO.</th>
-                    <th>SUMMARY</th>
-                    <th style={{ whiteSpace: "nowrap" }}>STATUS</th>
-                    <th style={{ whiteSpace: "nowrap" }}>UPDATED</th>
-                    <th style={{ textAlign: "right", whiteSpace: "nowrap" }}>ACTION</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.recentTickets.map((t: any) => (
-                    <tr key={t.id}>
-                      <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
-                        <button
-                          onClick={() => onNavigate("ticket-detail", { ticketId: t.id, id: t.id })}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            padding: 0,
-                            color: "var(--color-primary-green)",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            textDecoration: "underline",
-                            fontFamily: "inherit",
-                            fontSize: "inherit",
-                          }}
-                        >
-                          {t.ticketNumber}
-                        </button>
-                      </td>
-                      <td style={{ maxWidth: "240px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={t.summary}>
-                        {t.summary}
-                      </td>
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        <span className={`zen-badge ${getStatusBadge(t.currentStatus)}`}>
-                          {t.currentStatus}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
-                        {new Date(t.updatedAt).toLocaleDateString()}
-                      </td>
-                      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                        <button
-                          className="btn-zen-secondary"
-                          style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}
-                          onClick={() => onNavigate("ticket-detail", { ticketId: t.id, id: t.id })}
-                        >
-                          View
-                        </button>
-                      </td>
+            <>
+              {/* Desktop Table View */}
+              <div className="zen-table-desktop" style={{ overflowX: "auto", width: "100%" }}>
+                <table className="zen-table" style={{ width: "100%", fontSize: "0.875rem" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ whiteSpace: "nowrap" }}>TICKET NO.</th>
+                      <th>SUMMARY</th>
+                      <th style={{ whiteSpace: "nowrap" }}>STATUS</th>
+                      <th style={{ whiteSpace: "nowrap" }}>UPDATED</th>
+                      <th style={{ textAlign: "right", whiteSpace: "nowrap" }}>ACTION</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {data.recentTickets.map((t: any) => (
+                      <tr key={t.id}>
+                        <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+                          <button
+                            onClick={() => onNavigate("ticket-detail", { ticketId: t.id, id: t.id })}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              padding: 0,
+                              color: "var(--color-primary-green)",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              textDecoration: "underline",
+                              fontFamily: "inherit",
+                              fontSize: "inherit",
+                            }}
+                          >
+                            {t.ticketNumber}
+                          </button>
+                        </td>
+                        <td style={{ maxWidth: "240px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={t.summary}>
+                          {t.summary}
+                        </td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <span className={`zen-badge ${getStatusBadge(t.currentStatus)}`}>
+                            {t.currentStatus}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
+                          {new Date(t.updatedAt).toLocaleDateString()}
+                        </td>
+                        <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                          <button
+                            className="btn-zen-secondary"
+                            data-testid={`view-ticket-${t.ticketNumber}`}
+                            style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}
+                            onClick={() => onNavigate("ticket-detail", { ticketId: t.id, id: t.id })}
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card List View (Section 8.7 responsive compliance) */}
+              <div className="zen-mobile-cards">
+                {data.recentTickets.map((t: any) => (
+                  <div
+                    key={t.id}
+                    className="zen-mobile-card" data-testid={`view-card-${t.ticketNumber}`}
+                    style={{ cursor: "pointer", marginBottom: "0.6rem", padding: "0.85rem" }}
+                    onClick={() => onNavigate("ticket-detail", { ticketId: t.id, id: t.id })}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.35rem" }}>
+                      <span style={{ fontWeight: 700, color: "var(--color-primary-green)", fontSize: "0.85rem", fontFamily: "monospace" }}>
+                        {t.ticketNumber}
+                      </span>
+                      <span className={`zen-badge ${getStatusBadge(t.currentStatus)}`}>
+                        {t.currentStatus}
+                      </span>
+                    </div>
+                    <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.4rem", wordBreak: "break-word" }}>
+                      {t.summary}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
+                      <span>Updated: {new Date(t.updatedAt).toLocaleDateString()}</span>
+                      <span style={{ color: "var(--color-primary-green)", fontWeight: 600, fontSize: "0.8rem" }}>View →</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
         {/* Right Column: Quick Actions */}
-        <div className="zen-card" style={{ padding: "1.25rem" }}>
+        <div className="zen-card" style={{ padding: "1.25rem", minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }}>
           <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.1rem", fontWeight: 600, color: "var(--color-primary-green)" }}>
             ⚡ Quick Actions
           </h3>

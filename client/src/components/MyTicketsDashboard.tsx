@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext.js";
 import { useRequester } from "../context/RequesterContext.js";
 import { Ticket, Category, TicketListResponse, fetchTickets, fetchCategories } from "../api.js";
 
-const STATUS_OPTIONS = ["ALL", "NEW", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"] as const;
+const STATUS_OPTIONS = ["ALL", "OPEN", "NEW", "IN_PROGRESS", "WAITING_FOR_REQUESTER", "PENDING", "RESOLVED", "CLOSED"] as const;
 const PRIORITY_OPTIONS = ["ALL", "LOW", "MEDIUM", "HIGH", "URGENT"] as const;
 const PAGE_SIZE = 10;
 
@@ -11,6 +11,13 @@ interface MyTicketsDashboardProps {
   onViewTicket: (ticketId: number) => void;
   onCreateTicket: () => void;
   refreshKey?: number;
+  initialFilters?: {
+    status?: string;
+    priority?: string;
+    categoryId?: string;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  };
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -41,7 +48,7 @@ function PriorityBadge({ priority }: { priority: string }) {
   return <span className={map[priority] ?? "zen-badge"}>{priority}</span>;
 }
 
-export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refreshKey }: MyTicketsDashboardProps) {
+export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refreshKey, initialFilters }: MyTicketsDashboardProps) {
   const { user } = useAuth();
   let requesterName: string | undefined = undefined;
   try {
@@ -56,9 +63,22 @@ export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refre
 
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
-  const [filterPriority, setFilterPriority] = useState("ALL");
-  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [filterCategory, setFilterCategory] = useState(initialFilters?.categoryId || "");
+  const [filterPriority, setFilterPriority] = useState(initialFilters?.priority || "ALL");
+  const [filterStatus, setFilterStatus] = useState(initialFilters?.status || "ALL");
+  const [sortBy, setSortBy] = useState(initialFilters?.sortBy || "createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(initialFilters?.sortOrder || "desc");
+
+  useEffect(() => {
+    if (initialFilters) {
+      if (initialFilters.status !== undefined) setFilterStatus(initialFilters.status);
+      if (initialFilters.priority !== undefined) setFilterPriority(initialFilters.priority);
+      if (initialFilters.categoryId !== undefined) setFilterCategory(initialFilters.categoryId);
+      if (initialFilters.sortBy !== undefined) setSortBy(initialFilters.sortBy);
+      if (initialFilters.sortOrder !== undefined) setSortOrder(initialFilters.sortOrder);
+      setCurrentPage(1);
+    }
+  }, [initialFilters]);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,7 +108,7 @@ export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refre
     } finally {
       setIsLoading(false);
     }
-  }, [search, filterCategory, filterPriority, filterStatus, currentPage, refreshKey]);
+  }, [search, filterCategory, filterPriority, filterStatus, sortBy, sortOrder, currentPage, refreshKey]);
 
   useEffect(() => {
     loadTickets();
@@ -182,7 +202,7 @@ export default function MyTicketsDashboard({ onViewTicket, onCreateTicket, refre
               onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
             >
               {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s === "ALL" ? "All Statuses" : s.replace("_", " ")}</option>
+                <option key={s} value={s}>{s === "ALL" ? "All Statuses" : s === "OPEN" ? "Open (Active)" : s === "WAITING_FOR_REQUESTER" ? "Waiting for Me" : s.replace(/_/g, " ")}</option>
               ))}
             </select>
           </div>

@@ -43,7 +43,7 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
               </button>
             )}
 
-            {(user.role === "REQUESTER" || user.role === "IT_STAFF") && (
+            {user.role === "REQUESTER" && (
               <button
                 id="nav-my-tickets"
                 className={`zen-nav-link ${currentPage === "my-tickets" ? "active" : ""}`}
@@ -61,7 +61,7 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
                 ✏️ Create Ticket
               </button>
             )}
-            {user.role === "IT_STAFF" && (
+            {(user.role === "IT_STAFF" || user.role === "ADMINISTRATOR") && (
               <button
                 id="nav-staff-queue"
                 className={`zen-nav-link ${currentPage === "staff-queue" ? "active" : ""}`}
