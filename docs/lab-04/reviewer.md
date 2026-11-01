@@ -25,7 +25,8 @@
 
 ## Pull Requests I reviewed for my partner
 **My comment:**
-> [Good, Everything looks good to me., Approved! Everything looks good, Good, All good!, LGTM!]
+> [ Good, Everything looks good to me.
+, Approved! Everything looks good, Good, All good!]
 
 **Partner's response:**
-> [Thanks, Thanks for reviewing!, Thank you!, Thanks for checking!, Appreciate it!, Thank you 🙏]
+> [ Thanks, Thanks for reviewing!, ]
